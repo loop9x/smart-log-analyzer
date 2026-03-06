@@ -1,0 +1,82 @@
+{
+    "type": "object",
+    "properties": {
+        "rootCause": {
+            "type": "string",
+            "description": "One sentence: what error occurred, in which service, and the HTTP status code."
+        },
+        "failingService": {
+            "type": "string",
+            "description": "Name of the service where the error originated (e.g. car-booking, flight-booking, hotel-booking, trip-booking)."
+        },
+        "errorMessage": {
+            "type": "string",
+            "description": "The exact error message from the originating failure span or log."
+        },
+        "httpStatusCode": {
+            "type": "integer",
+            "description": "HTTP status code returned by the failing service. 0 if not an HTTP error."
+        },
+        "callFlow": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "service": {
+                        "type": "string",
+                        "description": "Service or operation name from the span."
+                    },
+                    "spanId": {
+                        "type": "string",
+                        "description": "Span ID."
+                    },
+                    "parentSpanId": {
+                        "type": "string",
+                        "description": "Parent span ID. Empty string for root span."
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["OK", "ERROR"],
+                        "description": "Whether this span succeeded or failed."
+                    },
+                    "durationMs": {
+                        "type": "number",
+                        "description": "Span duration in milliseconds (converted from durationNano)."
+                    },
+                    "isErrorOrigin": {
+                        "type": "boolean",
+                        "description": "True only for the single span where the error originated, not for spans that merely propagated it."
+                    }
+                },
+                "required": ["service", "spanId", "parentSpanId", "status", "durationMs", "isErrorOrigin"],
+                "additionalProperties": false,
+                "minLength": 1
+            },
+            "minItems": 1,
+            "description": "Ordered list of spans forming the call flow, with hierarchy encoded via parentSpanId."
+        },
+        "serviceErrors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "service": {
+                        "type": "string",
+                        "description": "Service name that emitted the error."
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Exact error message quoted from logs, exception messages, or JSON error payloads."
+                    }
+                },
+                "required": ["service", "message"],
+                "additionalProperties": false,
+                "minLength": 1
+            },
+            "minItems": 1,
+            "description": "All error messages extracted from service logs and error events."
+        }
+    },
+    "required": ["thinking", "rootCause", "failingService", "errorMessage", "httpStatusCode", "callFlow", "serviceErrors"],
+    "additionalProperties": false
+}

@@ -1,0 +1,214 @@
+Events JSON: [ {                                                                                                                                                                                                                                                                       
+  "type" : "trace",                                                                                                                                                                                                                                                                                                                                                                         
+  "timeUnixNano" : "1772713532027989163",                                                                                                                                                                                                                                                                                                                                                   
+  "durationNano" : "1013168268",                                                                                                                                                                                                                                                                                                                                                            
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                                                                                                                                                                                                                                                                                                                           
+  "spanId" : "54d5311d3167ad64",                                                                                                                                                                                                                                                                                                                                                            
+  "name" : "timer",                                                                                                                                                                                                                                                                                                                                                                         
+  "kind" : "1",                                                                                                                                                                                                                                                                                                                                                                             
+  "status" : "2",                                                                                                                                                                                                                                                                                                                                                                           
+  "message" : "\ncamel.uri: timer://syncLoadGenerator?fixedRate=true&period=5000\nexchangeId: BBE76C47C038AB7-0000000000000001\nop: EVENT_RECEIVED\ncomponent: camel-timer\nurl.query: fixedRate=true&period=5000\nurl.path: syncLoadGenerator\nthread.name: Camel (camel-1) thread #5 - timer://syncLoadGenerator\nurl.scheme: timer\nerror: true\nthread.id: 48\n[Event] log\n  message: S
+ending sync trip booking request\n[Event] error\n  error.kind: Exception\n  event: error\n  message: HTTP operation failed invoking http://localhost:8090/camel/bookTrip with statusCode: 405"                                                                                                                                                                                              
+}, {                                                                                                                                                                                                                                                                                                                                                                                        
+  "timeUnixNano" : "1772713532073363701",                                                                                                                                                                                                                                                                                                                                                   
+  "observedTimeUnixNano" : "1772713532073377711",                                                                                                                                                                                                                                                                                                                                           
+  "severityText" : "INFO",                                                                                                                                                                                                                                                                                                                                                                  
+  "message" : "Sending sync trip booking request",                                                                                                                                                                                                                                                                                                                                          
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                                                                                                                                                                                                                                                                                                                           
+  "spanId" : "54d5311d3167ad64",                                                                                                                                                                                                                                                                                                                                                            
+  "type" : "log"                                                                                                                                                                                                                                                                                                                                                                            
+}, {                                                                                                                                                                                                                                                                                                                                                                                        
+  "type" : "trace",                                                                                                                                                                                                                                                                                                                                                                         
+  "timeUnixNano" : "1772713532076682591",                                                                                                                                                                                                                                                                                                                                                   
+  "durationNano" : "958720102",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "2042217961587022",                                                               
+  "parentSpanId" : "54d5311d3167ad64",                                                         
+  "name" : "http",                                                                             
+  "kind" : "1",                                                                                
+  "status" : "2",                                                                              
+  "message" : "\ncamel.uri: http://localhost:8090/camel/bookTrip\nexchangeId: BBE76C47C038AB7-0000000000000001\nserver.address: http://localhost:8090/camel/bookTrip\nop: EVENT_SENT\ncomponent: camel-http\nserver.protocol: http\nurl.path: localhost:8090/camel/bookTrip\nthread.name: Camel (camel-1) thread #5 - timer://syncLoadGenerator\nurl.scheme: http\nerror: true\nthread.id: 4
+8\n[Event] error\n  error.kind: Exception\n  event: error\n  message: HTTP operation failed invoking http://localhost:8090/camel/bookTrip with statusCode: 405"                               
+}, {                                                                                           
+  "type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532101926936",                                                      
+  "durationNano" : "928423466",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "5947280c56d9687e",                                                               
+  "parentSpanId" : "2042217961587022",                                                         
+  "name" : "GET",                                                                              
+  "kind" : "3",                                                                                
+  "status" : "2",                                                                              
+  "message" : "\nhttp.request.method: GET\nnetwork.protocol.version: 1.1\nserver.address: localhost\nerror.type: 405\nthread.name: Camel (camel-1) thread #5 - timer://syncLoadGenerator\nurl.full: http://localhost:8090/camel/bookTrip\nserver.port: 8090\nthread.id: 48\nhttp.response.status_code: 405"
+}, {                                                                                           
+  "type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532302601939",                                                      
+  "durationNano" : "726892931",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "2b887b6d830b2f7d",                                                               
+  "parentSpanId" : "5947280c56d9687e",                                                         
+  "name" : "GET /camel/bookTrip",                                                              
+  "kind" : "2",                                                                                
+  "status" : "",                                                                               
+  "message" : "\nnetwork.protocol.version: 1.1\nuser_agent.original: Apache-HttpClient/5.5.1 (Java/21.0.9)\nurl.scheme: http\nthread.name: vert.x-eventloop-thread-0\nnetwork.peer.port: 49952\nhttp.request.method: GET\nhttp.route: /camel/bookTrip\nserver.address: localhost\nclient.address: 127.0.0.1\nnetwork.peer.address: 127.0.0.1\nurl.path: /camel/bookTrip\nserver.port: 8090\n
+thread.id: 51\nhttp.response.status_code: 405"                                                 
+}, {                                                                                           
+"type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532332872622",                                                      
+  "durationNano" : "695418617",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "8f453fcd749ce9c4",                                                               
+  "parentSpanId" : "5947280c56d9687e",                                                         
+  "name" : "rest",                                                                             
+  "kind" : "1",                                                                                
+  "status" : "2",                                                                              
+  "message" : "\ncamel.uri: rest://get:/camel:/bookTrip?consumerComponentName=platform-http&produces=application%2Fjson&routeId=bookTrip-http\nexchangeId: 887B9D9680A75A8-0000000000000002\nop: EVENT_RECEIVED\ncomponent: camel-rest\nurl.query: consumerComponentName=platform-http&produces=application%2Fjson&routeId=bookTrip-http\nurl.path: get:/camel:/bookTrip\nthread.name: vert.
+x-worker-thread-1\nurl.scheme: rest\nerror: true\nthread.id: 63\n[Event] log\n  message: New book trip request with trace=00-fc4c0f458e05feecc115c556d173648e-8f453fcd749ce9c4-01\n[Event] error\n  error.kind: Exception\n  event: error\n  message: HTTP operation failed invoking http://localhost:8092/camel/bookFlight with statusCode: 405"
+}, {                                                                                           
+  "timeUnixNano" : "1772713532369752512",                                                      
+  "observedTimeUnixNano" : "1772713532369764681",                                              
+  "severityText" : "INFO",                                                                     
+  "message" : "New book trip request with trace=00-fc4c0f458e05feecc115c556d173648e-8f453fcd749ce9c4-01",                                                                                     
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "8f453fcd749ce9c4",                                                               
+  "type" : "log"                                                                               
+}, {                                                                                           
+  "type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532374104554",                                                      
+  "durationNano" : "484022466",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "587aef4e90a4cdf3",                                                               
+  "parentSpanId" : "8f453fcd749ce9c4",                                                         
+  "name" : "http",                                                                             
+  "kind" : "1",                                                                                
+  "status" : "",                                                                               
+  "message" : "\ncamel.uri: http://localhost:8091/camel/bookCar?bridgeEndpoint=true\nexchangeId: 887B9D9680A75A8-0000000000000002\nserver.address: http://localhost:8091/camel/bookCar\nop: EVENT_SENT\ncomponent: camel-http\nurl.query: bridgeEndpoint=true\nserver.protocol: http\nurl.path: localhost:8091/camel/bookCar\nthread.name: vert.x-worker-thread-1\nurl.scheme: http\nthread.
+id: 63"                                                                                        
+}, {                                                                                           
+  "type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532396950248",                                                      
+  "durationNano" : "438736433",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "a097bf8f63ad89dd",                                                               
+  "parentSpanId" : "587aef4e90a4cdf3",                                                         
+  "name" : "GET",                                                                              
+  "kind" : "3",                                                                                
+  "status" : "",                                                                               
+  "message" : "\nhttp.request.method: GET\nnetwork.protocol.version: 1.1\nserver.address: localhost\nthread.name: vert.x-worker-thread-1\nurl.full: http://localhost:8091/camel/bookCar\nserver.port: 8091\nthread.id: 63\nhttp.response.status_code: 200"
+}, {                                                                                           
+  "type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532573967269",                                                      
+  "durationNano" : "214498711",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "00ee49bb26ebefb1",                                                               
+  "parentSpanId" : "a097bf8f63ad89dd",                                                         
+  "name" : "GET /camel/bookCar",                                                               
+  "kind" : "2",                                                                                
+  "status" : "",                                                                               
+  "message" : "\nnetwork.protocol.version: 1.1\nuser_agent.original: Apache-HttpClient/5.5.1 (Java/21.0.9)\nurl.scheme: http\nthread.name: vert.x-eventloop-thread-0\nnetwork.peer.port: 40392\nhttp.request.method: GET\nhttp.route: /camel/bookCar\nserver.address: localhost\nclient.address: 127.0.0.1\nnetwork.peer.address: 127.0.0.1\nurl.path: /camel/bookCar\nserver.port: 8091\nth
+read.id: 51\nhttp.response.status_code: 200"                                                   
+}, {               
+"type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532751431795",                                                      
+  "durationNano" : "6677455",                                                                  
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "9ec21e35831fa6d4",                                                               
+  "parentSpanId" : "a097bf8f63ad89dd",                                                         
+  "name" : "rest",                                                                             
+  "kind" : "1",                                                                                
+  "status" : "",                                                                               
+  "message" : "\ncamel.uri: rest://get:/camel:/bookCar?consumerComponentName=platform-http&produces=application%2Fjson&routeId=bookCar-http\nexchangeId: 0F4E7E41CB792A9-0000000000000002\nop: EVENT_RECEIVED\ncomponent: camel-rest\nurl.query: consumerComponentName=platform-http&produces=application%2Fjson&routeId=bookCar-http\nurl.path: get:/camel:/bookCar\nthread.name: vert.x-wo
+rker-thread-0\nurl.scheme: rest\nthread.id: 56\n[Event] log\n  message: New book car request with trace=00-fc4c0f458e05feecc115c556d173648e-9ec21e35831fa6d4-01\n[Event] log\n  message: Processing car booking request"
+}, {                                                                                           
+  "timeUnixNano" : "1772713532753118428",                                                      
+  "observedTimeUnixNano" : "1772713532753126809",                                              
+  "severityText" : "INFO",                                                                     
+  "message" : "New book car request with trace=00-fc4c0f458e05feecc115c556d173648e-9ec21e35831fa6d4-01",                                                                                      
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "9ec21e35831fa6d4",                                                               
+  "type" : "log"                                                                               
+}, {                                                                                           
+  "timeUnixNano" : "1772713532756548720",                                                      
+  "observedTimeUnixNano" : "1772713532756571920",                                              
+  "severityText" : "INFO",                                                                     
+  "message" : "Processing car booking request",                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "9ec21e35831fa6d4",                                                               
+  "type" : "log"                                                                               
+}, {                                                                                           
+  "type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532862397413",                                                      
+  "durationNano" : "160543855",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "c0e0da465db8e5ea",                                                               
+  "parentSpanId" : "8f453fcd749ce9c4",                                                         
+  "name" : "http",                                                                             
+  "kind" : "1",                                                                                
+  "status" : "2",                                                                              
+  "message" : "\ncamel.uri: http://localhost:8092/camel/bookFlight?bridgeEndpoint=true\nexchangeId: 887B9D9680A75A8-0000000000000002\nserver.address: http://localhost:8092/camel/bookFlight\nop: EVENT_SENT\ncomponent: camel-http\nurl.query: bridgeEndpoint=true\nserver.protocol: http\nurl.path: localhost:8092/camel/bookFlight\nthread.name: vert.x-worker-thread-1\nurl.scheme: http
+\nerror: true\nthread.id: 63\n[Event] error\n  error.kind: Exception\n  event: error\n  message: HTTP operation failed invoking http://localhost:8092/camel/bookFlight with statusCode: 405"
+}, {                                                                                           
+  "type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532871580888",                                                      
+  "durationNano" : "147115645",                                                                
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "49b9a604293b58bd",                                                               
+  "parentSpanId" : "c0e0da465db8e5ea",                                                         
+  "name" : "POST",                                                                             
+  "kind" : "3",                                                                                
+  "status" : "2",                                                                              
+  "message" : "\nhttp.request.method: POST\nnetwork.protocol.version: 1.1\nserver.address: localhost\nerror.type: 405\nthread.name: vert.x-worker-thread-1\nurl.full: http://localhost:8092/camel/bookFlight\nserver.port: 8092\nthread.id: 63\nhttp.response.status_code: 405"
+}, {                                                                                           
+  "type" : "trace",                                                                            
+  "timeUnixNano" : "1772713532955333528",                                                      
+  "durationNano" : "63653936",                                                                 
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "b69f6b28706f1d87",                                                               
+  "parentSpanId" : "49b9a604293b58bd",                                                         
+  "name" : "POST",                                                                             
+  "kind" : "2",                                                                                
+  "status" : "",                                                                               
+  "message" : "\nnetwork.protocol.version: 1.1\nuser_agent.original: Apache-HttpClient/5.5.1 (Java/21.0.9)\nurl.scheme: http\nthread.name: vert.x-eventloop-thread-0\nnetwork.peer.port: 50312\nhttp.request.method: POST\nserver.address: localhost\nclient.address: 127.0.0.1\nnetwork.peer.address: 127.0.0.1\nurl.path: /camel/bookFlight\nserver.port: 8092\nthread.id: 51\nhttp.respon
+se.status_code: 405"                                                                           
+}, {                                                     
+"timeUnixNano" : "1772713533026285162",                                                      
+  "observedTimeUnixNano" : "1772713533026302232",                                              
+  "severityText" : "ERROR",                                                                    
+  "message" : "Failed delivery for (MessageId: 887B9D9680A75A8-0000000000000002 on ExchangeId: 887B9D9680A75A8-0000000000000002). Exhausted after delivery attempt: 1 caught: org.apache.camel.http.base.HttpOperationFailedException: HTTP operation failed invoking http://localhost:8092/camel/bookFlight with statusCode: 405\n\nMessage History\n--------------------------------------
+-------------------------------------------------------------------------------------------------\nSource                                   ID                             Processor                                          Elapsed (ms)\ntrip-booking.camel.yaml:16               bookTrip-http/bookTrip-http    from[platform-http:///camel/bookTrip?httpMethodRes          720\ntrip-bo
+oking.camel.yaml:18               bookTrip-http/log4             log[New book trip request with trace=${header.trac           21\ntrip-booking.camel.yaml:21               bookTrip-http/choice1          choice[when[simple{${random(0,100)} < 10}]]                   0\ntrip-booking.camel.yaml:32               bookTrip-http/removeHeaders1   removeHeaders[CamelHttp*]                
+                     0\ntrip-booking.camel.yaml:34               bookTrip-http/to1              to[http://{{service.car}}/camel/bookCar?bridgeEndp          484\ntrip-booking.camel.yaml:36               bookTrip-http/convertBodyTo1   convertBodyTo[String]                                         2\ntrip-booking.camel.yaml:38               bookTrip-http/setVariable1     setVariabl
+e[carResult]                                        0\ntrip-booking.camel.yaml:41               bookTrip-http/removeHeaders2   removeHeaders[CamelHttp*]                                     0\ntrip-booking.camel.yaml:43               bookTrip-http/choice2          choice[when[simple{${random(0,100)} < 9}]]                    0\ntrip-booking.camel.yaml:54               bookTrip-h
+ttp/to2              to[http://{{service.flight}}/camel/bookFlight?brid            0\n\nStacktrace\n---------------------------------------------------------------------------------------------------------------------------------------\nexception.message: HTTP operation failed invoking http://localhost:8092/camel/bookFlight with statusCode: 405\nexception.stacktrace: org.apache
+.camel.http.base.HttpOperationFailedException: HTTP operation failed invoking http://localhost:8092/camel/bookFlight with statusCode: 405\n\tat org.apache.camel.component.http.HttpProducer.populateHttpOperationFailedException(HttpProducer.java:466)\n\tat org.apache.camel.component.http.HttpProducer.lambda$process$1(HttpProducer.java:284)\n\tat org.apache.camel.component.http.Ht
+tpProducer.executeMethod(HttpProducer.java:500)\n\tat org.apache.camel.component.http.HttpProducer.process(HttpProducer.java:253)\n\tat org.apache.camel.support.AsyncProcessorConverterHelper$ProcessorToAsyncProcessorBridge.process(AsyncProcessorConverterHelper.java:65)\n\tat org.apache.camel.processor.SendProcessor.sendUsingProducer(SendProcessor.java:253)\n\tat org.apache.came
+l.processor.SendProcessor.process(SendProcessor.java:158)\n\tat org.apache.camel.telemetry.TraceProcessorsInterceptStrategy$TraceProcessor.process(TraceProcessorsInterceptStrategy.java:84)\n\tat org.apache.camel.support.processor.DelegateAsyncProcessor.process(DelegateAsyncProcessor.java:117)\n\tat org.apache.camel.processor.errorhandler.RedeliveryErrorHandler$SimpleTask.handle
+First(RedeliveryErrorHandler.java:440)\n\tat org.apache.camel.processor.errorhandler.RedeliveryErrorHandler$SimpleTask.run(RedeliveryErrorHandler.java:416)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor$Worker.doRun(DefaultReactiveExecutor.java:199)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor$Worker.executeReactiveWork(DefaultReactiveExecutor.java:189
+)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor$Worker.tryExecuteReactiveWork(DefaultReactiveExecutor.java:166)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor$Worker.schedule(DefaultReactiveExecutor.java:148)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor.scheduleMain(DefaultReactiveExecutor.java:59)\n\tat org.apache.camel.processor.Pipeline
+.process(Pipeline.java:162)\n\tat org.apache.camel.impl.engine.CamelInternalProcessor.processNonTransacted(CamelInternalProcessor.java:385)\n\tat org.apache.camel.impl.engine.CamelInternalProcessor.process(CamelInternalProcessor.java:361)\n\tat org.apache.camel.impl.engine.DefaultAsyncProcessorAwaitManager.process(DefaultAsyncProcessorAwaitManager.java:81)\n\tat org.apache.came
+l.support.AsyncProcessorSupport.process(AsyncProcessorSupport.java:32)\n\tat org.apache.camel.component.platform.http.vertx.VertxPlatformHttpConsumer.processExchange(VertxPlatformHttpConsumer.java:367)\n\tat org.apache.camel.component.platform.http.vertx.VertxPlatformHttpConsumer.lambda$handleRequest$1(VertxPlatformHttpConsumer.java:327)\n\tat io.vertx.core.impl.ContextImpl.lam
+bda$executeBlocking$4(ContextImpl.java:192)\n\tat io.vertx.core.impl.ContextInternal.dispatch(ContextInternal.java:270)\n\tat io.vertx.core.impl.ContextImpl$1.execute(ContextImpl.java:221)\n\tat io.vertx.core.impl.WorkerTask.run(WorkerTask.java:56)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)\n\tat java.base/java.util.concurren
+t.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)\n\tat io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\n\nexception.type: org.apache.camel.http.base.HttpOperationFailedException",
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "8f453fcd749ce9c4",                                                               
+  "type" : "log"                                                                               
+}, {                                                                                           
+  "timeUnixNano" : "1772713533038495982",                                                      
+  "observedTimeUnixNano" : "1772713533038510404",                                              
+  "severityText" : "ERROR",                                                                    
+  "message" : "Failed delivery for (MessageId: BBE76C47C038AB7-0000000000000001 on ExchangeId: BBE76C47C038AB7-0000000000000001). Exhausted after delivery attempt: 1 caught: org.apache.camel.http.base.HttpOperationFailedException: HTTP operation failed invoking http://localhost:8090/camel/bookTrip with statusCode: 405\n\nMessage History\n----------------------------------------
+-----------------------------------------------------------------------------------------------\nSource                                   ID                             Processor                                          Elapsed (ms)\nlog-generator.camel.yaml:6               sync-load-generator/sync-load- from[timer://syncLoadGenerator?fixedRate=true&peri         1029\nlog-gener
+ator.camel.yaml:11              sync-load-generator/log1       log[Sending sync trip booking request]                       14\nlog-generator.camel.yaml:14              sync-load-generator/removeHead removeHeaders[*]                                              0\nlog-generator.camel.yaml:16              sync-load-generator/to1        to[http://{{service.trip}}/camel/bookTrip] 
+                   0\n\nStacktrace\n---------------------------------------------------------------------------------------------------------------------------------------\nexception.message: HTTP operation failed invoking http://localhost:8090/camel/bookTrip with statusCode: 405\nexception.stacktrace: org.apache.camel.http.base.HttpOperationFailedException: HTTP operation fail
+ed invoking http://localhost:8090/camel/bookTrip with statusCode: 405\n\tat org.apache.camel.component.http.HttpProducer.populateHttpOperationFailedException(HttpProducer.java:466)\n\tat org.apache.camel.component.http.HttpProducer.lambda$process$1(HttpProducer.java:284)\n\tat org.apache.camel.component.http.HttpProducer.executeMethod(HttpProducer.java:500)\n\tat org.apache.cam
+el.component.http.HttpProducer.process(HttpProducer.java:253)\n\tat org.apache.camel.support.AsyncProcessorConverterHelper$ProcessorToAsyncProcessorBridge.process(AsyncProcessorConverterHelper.java:65)\n\tat org.apache.camel.processor.SendProcessor.sendUsingProducer(SendProcessor.java:253)\n\tat org.apache.camel.processor.SendProcessor.process(SendProcessor.java:158)\n\tat org.
+apache.camel.telemetry.TraceProcessorsInterceptStrategy$TraceProcessor.process(TraceProcessorsInterceptStrategy.java:84)\n\tat org.apache.camel.support.processor.DelegateAsyncProcessor.process(DelegateAsyncProcessor.java:117)\n\tat org.apache.camel.processor.errorhandler.RedeliveryErrorHandler$SimpleTask.handleFirst(RedeliveryErrorHandler.java:440)\n\tat org.apache.camel.proces
+sor.errorhandler.RedeliveryErrorHandler$SimpleTask.run(RedeliveryErrorHandler.java:416)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor$Worker.doRun(DefaultReactiveExecutor.java:199)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor$Worker.executeReactiveWork(DefaultReactiveExecutor.java:189)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor$Worker.
+tryExecuteReactiveWork(DefaultReactiveExecutor.java:166)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor$Worker.schedule(DefaultReactiveExecutor.java:148)\n\tat org.apache.camel.impl.engine.DefaultReactiveExecutor.scheduleMain(DefaultReactiveExecutor.java:59)\n\tat org.apache.camel.processor.Pipeline.process(Pipeline.java:162)\n\tat org.apache.camel.impl.engine.Camel
+InternalProcessor.processNonTransacted(CamelInternalProcessor.java:385)\n\tat org.apache.camel.impl.engine.CamelInternalProcessor.process(CamelInternalProcessor.java:361)\n\tat org.apache.camel.component.timer.TimerConsumer.sendTimerExchange(TimerConsumer.java:293)\n\tat org.apache.camel.component.timer.TimerConsumer$1.doRun(TimerConsumer.java:164)\n\tat org.apache.camel.compon
+ent.timer.TimerConsumer$1.run(TimerConsumer.java:136)\n\tat java.base/java.util.TimerThread.mainLoop(Timer.java:566)\n\tat java.base/java.util.TimerThread.run(Timer.java:516)\n\nexception.type: org.apache.camel.http.base.HttpOperationFailedException",
+  "traceId" : "fc4c0f458e05feecc115c556d173648e",                                              
+  "spanId" : "54d5311d3167ad64",                                                               
+  "type" : "log"                                                                               
+} ]                                 
+                                      

@@ -1,0 +1,43 @@
+Call Tree
+
+[GET /camel/bookTrip] (811c6c6c61f149df) [ERROR] - 11ms
+├── [rest] (2988065f9f259d99) [ERROR] - 11ms
+│   └── [HTTP] (125109c57043c8b6) [ERROR] - 125ms
+│       └── ROOT CAUSE: org.apache.camel.http.base.HttpOperationFailedException
+│           "HTTP operation failed invoking http://localhost:8091/camel/bookCar with statusCode: 502"
+
+What Happened
+
+1. A GET request was sent to /camel/bookTrip.
+2. The request was routed to the camel-rest component via the rest operation.
+3. The HTTP producer invoked the external service at http://localhost:8091/camel/bookCar.
+4. The external service returned a 502 status code, causing the HttpOperationFailedException.
+5. The Camel pipeline propagated the error, resulting in a failed delivery with the stacktrace.
+
+Root Cause
+
+The root cause was a 502 HTTP error returned by the external car booking service when invoking http://localhost:8091/camel/bookCar. This exception propagated through the Camel pipeline, resulting in the HTTP operation failure.
+
+===
+
+Call Tree
+
+[GET /camel/bookTrip] (b34c57cf61432b08) [ERROR] - 383ms
+└── [HTTP] (961a2376d6efe448) [ERROR] - 8ms
+    └── ROOT CAUSE: org.apache.camel.http.base.HttpOperationFailedException
+        "HTTP operation failed invoking http://localhost:8092/camel/bookFlight with statusCode: 504"
+        at org.apache.camel.http.base.HttpOperationFailedException
+        org.apache.camel.component.http.HttpProducer.populateHttpOperationFailedException(HttpProducer.java:466)
+        at org.apache.camel.component.http.HttpProducer.lambda$process$1(HttpProducer.java:284)
+        ...
+        Caused by: java.net.ConnectException: Connection refused
+
+What Happened
+
+1. The GET request to /camel/bookTrip succeeded but could not reach the next service.
+2. The rest component attempted to invoke http://localhost:8092/camel/bookFlight but received a 504 Gateway Timeout error.
+3. Vert.x worker-thread-15 handled the request to /camel/bookTrip but failed due to the preceding HTTP operation timeout.
+
+Root Cause
+
+The HTTP producer timed out while communicating with http://localhost:8092/camel/bookFlight, resulting in a 504 Gateway Timeout error which propagated through the Camel route, ultimately causing the original GET /camel/bookTrip request to fail with a 504 status code. The underlying cause is likely an unresponsive or overloaded backend service handling the flight booking operation.

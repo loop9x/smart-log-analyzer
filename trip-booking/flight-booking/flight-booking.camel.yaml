@@ -1,0 +1,77 @@
+- rest:
+    path: /camel
+    get:
+      - id: bookFlight-rest
+        path: /bookFlight
+        produces: application/json
+        to: direct:bookFlight
+
+- route:
+    id: bookFlight-http
+    from:
+      uri: direct:bookFlight
+      steps:
+        - log:
+            message: "New book flight request with trace=${header.traceparent}"
+            logName: com.example.flight.FlightBookingService
+        - log:
+            message: "Querying airline inventory"
+            logName: com.example.flight.FlightBookingService
+        - choice:
+            when:
+              - simple: "${random(0,100)} < 5"
+                steps:
+                  - delay:
+                      constant: "800"
+                  - log:
+                      message: "Airline inventory service did not respond in time"
+                      loggingLevel: WARN
+                      logName: com.example.flight.ExternalFlightProvider
+                  - setHeader:
+                      name: CamelHttpResponseCode
+                      constant: "504"
+                  - setBody:
+                      constant: '{"error":"Gateway Timeout","service":"flight-booking","message":"Airline inventory service did not respond within 3000ms"}'
+              - simple: "${random(0,100)} < 8"
+                steps:
+                  - log:
+                      message: "Fare service returned incomplete pricing data"
+                      loggingLevel: WARN
+                      logName: com.example.flight.FareService
+                  - setHeader:
+                      name: CamelHttpResponseCode
+                      constant: "500"
+                  - setBody:
+                      constant: '{"error":"Internal Server Error","service":"flight-booking","message":"Fare service response missing required price field"}'
+            otherwise:
+              steps:
+                - setBody:
+                    simple: '{"bookingId":${random(1,1000)},"flight":"Delta Air Lines ${random(1000,9999)}","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(100,200)}}'
+
+- route:
+    id: bookFlight-kafka
+    from:
+      uri: kafka:flight_input
+      parameters:
+        groupId: flight-booking
+      steps:
+        - log:
+            message: "New book flight request via Kafka topic"
+            logName: com.example.flight.FlightBookingService
+        - choice:
+            when:
+              - simple: "${random(0,100)} < 10"
+                steps:
+                  - log:
+                      message: "Transient DB lock while saving flight booking"
+                      loggingLevel: ERROR
+                      logName: com.example.flight.FlightBookingService
+                  - throwException:
+                      message: "Deadlock detected while saving async flight booking"
+                      exceptionType: java.lang.RuntimeException
+            otherwise:
+              steps:
+                - setBody:
+                    simple: '{"bookingId":${random(1,1000)},"flight":"Lufthansa ${random(1000,9999)}","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(100,200)}}'
+                - to:
+                    uri: kafka:flight_output

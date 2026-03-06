@@ -1,0 +1,75 @@
+- rest:
+    path: /camel
+    get:
+      - id: bookHotel-rest
+        path: /bookHotel
+        produces: application/json
+        to: direct:bookHotel
+
+- route:
+    id: bookHotel-http
+    from:
+      uri: direct:bookHotel
+      steps:
+        - log:
+            message: "New book hotel request with trace=${header.traceparent}"
+            logName: com.example.hotel.HotelBookingService
+        - log:
+            message: "Checking hotel room availability"
+            logName: com.example.hotel.HotelBookingService
+        - choice:
+            when:
+              - simple: "${random(0,100)} < 10"
+                steps:
+                  - log:
+                      message: "Partner hotel inventory service unavailable"
+                      loggingLevel: WARN
+                      logName: com.example.hotel.ExternalHotelProvider
+                  - setHeader:
+                      name: CamelHttpResponseCode
+                      constant: "503"
+                  - setBody:
+                      constant: '{"error":"Service Unavailable","service":"hotel-booking","message":"Partner hotel inventory returned 503"}'
+              - simple: "${random(0,100)} < 8"
+                steps:
+                  - log:
+                      message: "Room pricing calculation returned invalid result"
+                      loggingLevel: WARN
+                      logName: com.example.hotel.PricingPolicyService
+                  - setHeader:
+                      name: CamelHttpResponseCode
+                      constant: "500"
+                  - setBody:
+                      constant: '{"error":"Internal Server Error","service":"hotel-booking","message":"Nightly rate calculation returned negative value"}'
+            otherwise:
+              steps:
+                - setBody:
+                    simple: '{"bookingId":${random(1,1000)},"hotel":"Sheraton","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(150,300)}}'
+
+- route:
+    id: bookHotel-kafka
+    from:
+      uri: kafka:hotel_input
+      parameters:
+        groupId: hotel-booking
+      steps:
+        - log:
+            message: "New book hotel request via Kafka topic"
+            logName: com.example.hotel.HotelBookingService
+        - choice:
+            when:
+              - simple: "${random(0,100)} < 10"
+                steps:
+                  - log:
+                      message: "Broker timeout while publishing hotel confirmation"
+                      loggingLevel: ERROR
+                      logName: com.example.hotel.HotelBookingService
+                  - throwException:
+                      message: "Timeout while publishing hotel booking response to Kafka"
+                      exceptionType: java.lang.RuntimeException
+            otherwise:
+              steps:
+                - setBody:
+                    simple: '{"bookingId":${random(1,1000)},"hotel":"Marriott","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(150,300)}}'
+                - to:
+                    uri: kafka:hotel_output

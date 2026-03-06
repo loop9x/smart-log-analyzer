@@ -1,0 +1,75 @@
+- rest:
+    path: /camel
+    get:
+      - id: bookCar-rest
+        path: /bookCar
+        produces: application/json
+        to: direct:bookCar
+
+- route:
+    id: bookCar-http
+    from:
+      uri: direct:bookCar
+      steps:
+        - log:
+            message: "New book car request with trace=${header.traceparent}"
+            logName: com.example.car.CarBookingService
+        - log:
+            message: "Processing car booking request"
+            logName: com.example.car.CarBookingService
+        - choice:
+            when:
+              - simple: "${random(0,100)} < 5"
+                steps:
+                  - log:
+                      message: "External car provider returned error for request"
+                      loggingLevel: WARN
+                      logName: com.example.car.ExternalCarProvider
+                  - setHeader:
+                      name: CamelHttpResponseCode
+                      constant: "502"
+                  - setBody:
+                      constant: '{"error":"Bad Gateway","service":"car-booking","message":"External car provider API returned invalid response"}'
+              - simple: "${random(0,100)} < 10"
+                steps:
+                  - log:
+                      message: "Car pricing calculation returned inconsistent result"
+                      loggingLevel: WARN
+                      logName: com.example.car.PricingService
+                  - setHeader:
+                      name: CamelHttpResponseCode
+                      constant: "500"
+                  - setBody:
+                      constant: '{"error":"Internal Server Error","service":"car-booking","message":"Pricing engine returned negative net amount"}'
+            otherwise:
+              steps:
+                - setBody:
+                    simple: '{"bookingId":${random(1,1000)},"car":"Toyota Corolla","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(140,165)}}'
+
+- route:
+    id: bookCar-kafka
+    from:
+      uri: kafka:car_input
+      parameters:
+        groupId: car-booking
+      steps:
+        - log:
+            message: "New book car request via Kafka topic"
+            logName: com.example.car.CarBookingService
+        - choice:
+            when:
+              - simple: "${random(0,100)} < 10"
+                steps:
+                  - log:
+                      message: "Failed to write car booking confirmation event"
+                      loggingLevel: ERROR
+                      logName: com.example.car.CarBookingService
+                  - throwException:
+                      message: "Kafka send failure for car_output topic"
+                      exceptionType: java.lang.RuntimeException
+            otherwise:
+              steps:
+                - setBody:
+                    simple: '{"bookingId":${random(1,1000)},"car":"Honda Civic","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(140,165)}}'
+                - to:
+                    uri: kafka:car_output
