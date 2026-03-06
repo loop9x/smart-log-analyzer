@@ -11,6 +11,7 @@
             margin: 0;
             padding: 0;
             font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f4f4;
         }
 
         .bx--header {
@@ -19,6 +20,40 @@
             left: 0;
             right: 0;
             z-index: 8000;
+        }
+
+        .bx--header__nav {
+            height: 100%;
+            margin-left: 2rem;
+        }
+
+        .bx--header__menu-bar {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        .bx--header__menu-item {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            padding: 0 1rem;
+            color: #c6c6c6;
+            text-decoration: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .bx--header__menu-item:hover {
+            color: #ffffff;
+            background-color: #393939;
+        }
+
+        .bx--header__menu-item--current {
+            color: #ffffff;
+            border-bottom: 2px solid #0f62fe;
         }
 
         .camel-logo {
@@ -128,6 +163,73 @@
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
+
+        /* Infra specific styles */
+        .node-rect {
+            fill: #ffffff;
+            stroke: #0f62fe;
+            stroke-width: 2;
+            rx: 4;
+        }
+
+        .node-rect.node-active {
+            stroke: #198038;
+            stroke-width: 3;
+            animation: nodePulse 1.2s ease-in-out infinite;
+        }
+
+        .node-rect.node-pending {
+            stroke: #f1c21b;
+            stroke-width: 3;
+        }
+
+        .node-rect.node-idle {
+            stroke: #8d8d8d;
+            stroke-width: 2;
+        }
+
+        @keyframes nodePulse {
+            0% { filter: drop-shadow(0px 0px 0px rgba(25, 128, 56, 0)); }
+            50% { filter: drop-shadow(0px 0px 6px rgba(25, 128, 56, 0.6)); }
+            100% { filter: drop-shadow(0px 0px 0px rgba(25, 128, 56, 0)); }
+        }
+        
+        .node-text-title {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            fill: #161616;
+            text-anchor: middle;
+        }
+        
+        .node-text-sub {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 12px;
+            fill: #525252;
+            text-anchor: middle;
+        }
+
+        .metric-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            fill: #0f62fe;
+            text-anchor: middle;
+        }
+        
+        .metric-label {
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 10px;
+            fill: #525252;
+            text-anchor: middle;
+        }
+
+        .view-section {
+            display: none;
+        }
+        
+        .view-section.active {
+            display: flex;
+        }
     </style>
 </head>
 <body class="bx--body">
@@ -137,9 +239,20 @@
             <span class="bx--header__name--prefix">Smart Log</span>
             Analyzer
         </a>
+        <nav class="bx--header__nav">
+            <ul class="bx--header__menu-bar" aria-label="Main Navigation">
+                <li>
+                    <a id="nav-trace" class="bx--header__menu-item bx--header__menu-item--current" onclick="switchView('trace')">Trace Analysis</a>
+                </li>
+                <li>
+                    <a id="nav-infra" class="bx--header__menu-item" onclick="switchView('infra')">Infrastructure</a>
+                </li>
+            </ul>
+        </nav>
     </header>
 
-    <div class="container">
+    <!-- Trace Analysis View -->
+    <div id="view-trace" class="container view-section active">
         <div class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title">Trace Analysis</div>
@@ -159,11 +272,149 @@
         </div>
     </div>
 
+    <!-- Infrastructure View -->
+    <div id="view-infra" class="view-section" style="height: 100vh; padding-top: 48px; flex-direction: column;">
+        <div style="padding: 2rem; flex: 1;">
+            <div class="bx--tile" style="height: 100%; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 class="bx--type-productive-heading-03">Infrastructure State</h3>
+                    <div>
+                        <span id="infra-poll-status" class="bx--tag bx--tag--blue">Polling Active</span>
+                    </div>
+                </div>
+                
+                <div style="flex: 1; min-height: 500px; display: flex; justify-content: center; align-items: center; background-color: #f4f4f4; border: 1px solid #e0e0e0;">
+                    <svg id="infra-canvas" width="1000" height="460" viewBox="0 0 1000 460">
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#8d8d8d" />
+                            </marker>
+                        </defs>
+                        
+                        <!-- Edges -->
+                        <!-- N1 to N2 -->
+                        <path d="M 200 80 L 270 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="235" y="68" class="metric-label">spans and logs</text>
+                        
+                        <!-- N2 to N3 -->
+                        <path d="M 440 80 L 510 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="475" y="60" class="metric-text" id="metric-total-processed">0</text>
+                        <text x="475" y="72" class="metric-label">total processed</text>
+
+                        <!-- N3 to N4 -->
+                        <path d="M 680 80 L 750 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="715" y="60" class="metric-text" id="metric-cache-stores">0</text>
+                        <text x="715" y="72" class="metric-label">stores/s</text>
+                        
+                        <!-- N3 to N5 -->
+                        <path d="M 600 110 L 600 180" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="640" y="140" class="metric-text" id="metric-pending-errors">0</text>
+                        <text x="640" y="152" class="metric-label">pending errors</text>
+                        
+                        <!-- N5 to N6 -->
+                        <path d="M 600 250 L 600 320" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="640" y="280" class="metric-text" id="metric-error-queued">0</text>
+                        <text x="640" y="292" class="metric-label">queued</text>
+
+                        <!-- N6 to N7 -->
+                        <path d="M 680 350 L 750 350" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+                        <!-- N6 to N8 (Right to Left) -->
+                        <path d="M 520 350 L 450 350" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+
+                        <!-- N8 to N9 (Right to Left) -->
+                        <path d="M 280 350 L 210 350" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="245" y="330" class="metric-text" id="metric-results-stored">0</text>
+                        <text x="245" y="342" class="metric-label">stored results</text>
+
+                        <!-- Nodes -->
+                        <!-- 1. OTEL Collector -->
+                        <g transform="translate(40, 50)">
+                            <rect width="160" height="60" class="node-rect"/>
+                            <text x="80" y="26" class="node-text-title">OTEL Collector</text>
+                            <text x="80" y="44" class="node-text-sub">OpenTelemetry</text>
+                        </g>
+                        
+                        <!-- 2. Kafka -->
+                        <g transform="translate(280, 50)">
+                            <rect width="160" height="60" class="node-rect"/>
+                            <text x="80" y="26" class="node-text-title">OTEL Data</text>
+                            <text x="80" y="44" class="node-text-sub">Kafka</text>
+                        </g>
+
+                        <!-- 3. Correlator -->
+                        <g transform="translate(520, 50)">
+                            <rect width="160" height="60" class="node-rect"/>
+                            <text x="80" y="26" class="node-text-title">Correlator</text>
+                            <text x="80" y="44" class="node-text-sub">Camel</text>
+                        </g>
+
+                        <!-- 4. Infinispan -->
+                        <g transform="translate(760, 50)">
+                            <rect width="160" height="60" class="node-rect"/>
+                            <text x="80" y="26" class="node-text-title">Event Cache</text>
+                            <text x="80" y="44" class="node-text-sub">Infinispan</text>
+                            <text x="80" y="74" class="metric-text" id="metric-cache-entries" style="font-size: 10px;">0 entries</text>
+                        </g>
+
+                        <!-- 5. Artemis Error Queue -->
+                        <g transform="translate(520, 190)">
+                            <rect width="160" height="60" class="node-rect"/>
+                            <text x="80" y="26" class="node-text-title">Error Queue</text>
+                            <text x="80" y="44" class="node-text-sub">Artemis</text>
+                        </g>
+
+                        <!-- 6. Analyzer -->
+                        <g id="node-analyzer" transform="translate(520, 320)">
+                            <rect id="node-analyzer-rect" width="160" height="60" class="node-rect node-idle"/>
+                            <text x="80" y="26" class="node-text-title">Analyzer</text>
+                            <text x="80" y="44" class="node-text-sub">Camel</text>
+                            <text x="80" y="74" class="metric-text" id="metric-analyzer-status" style="font-size: 10px; fill: #8d8d8d;">IDLE</text>
+                        </g>
+
+                        <!-- 7. OpenAI -->
+                        <g transform="translate(760, 320)">
+                            <rect width="160" height="60" class="node-rect"/>
+                            <text x="80" y="26" class="node-text-title">Root Cause Analysis</text>
+                            <text x="80" y="44" class="node-text-sub">OpenAI-Compatible</text>
+                        </g>
+
+                        <!-- 8. Analysis Result -->
+                        <g transform="translate(280, 320)">
+                            <rect width="160" height="60" class="node-rect"/>
+                            <text x="80" y="26" class="node-text-title">Analysis Result</text>
+                            <text x="80" y="44" class="node-text-sub">Artemis</text>
+                        </g>
+
+                        <!-- 9. UI Console -->
+                        <g transform="translate(40, 320)">
+                            <rect width="160" height="60" class="node-rect"/>
+                            <text x="80" y="26" class="node-text-title">UI Console</text>
+                            <text x="80" y="44" class="node-text-sub">Storage & API</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/traces';
+        const INFRA_API = '/api/infra/state';
+        
         let allTraces = [];
         let selectedTraceId = null;
 
+        // View Switching
+        function switchView(viewName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.bx--header__menu-item').forEach(el => el.classList.remove('bx--header__menu-item--current'));
+            
+            document.getElementById(`view-${viewName}`).classList.add('active');
+            document.getElementById(`nav-${viewName}`).classList.add('bx--header__menu-item--current');
+        }
+
+        // Trace Analysis Logic
         async function loadTraces() {
             try {
                 const response = await fetch(API_BASE);
@@ -269,7 +520,113 @@
             renderTraceList(filtered);
         });
 
-        // Initial load
+        // Infra Polling Logic
+        let lastInfraState = null;
+        let lastPollTime = null;
+
+        function updateMetric(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value !== undefined ? value : '-';
+        }
+
+        function setAnalyzerState(state, traceId = '') {
+            const rect = document.getElementById('node-analyzer-rect');
+            const status = document.getElementById('metric-analyzer-status');
+            if (!rect || !status) return;
+
+            rect.classList.remove('node-active', 'node-pending', 'node-idle');
+
+            if (state === 'active') {
+                rect.classList.add('node-active');
+                status.textContent = traceId ? `ACTIVE (${traceId.slice(0, 8)}…)` : 'ACTIVE';
+                status.style.fill = '#198038';
+                return;
+            }
+
+            if (state === 'pending') {
+                rect.classList.add('node-pending');
+                status.textContent = 'PENDING';
+                status.style.fill = '#f1c21b';
+                return;
+            }
+
+            rect.classList.add('node-idle');
+            status.textContent = 'IDLE';
+            status.style.fill = '#8d8d8d';
+        }
+
+        async function pollInfraState() {
+            try {
+                const now = Date.now();
+                const response = await fetch(INFRA_API);
+                if (!response.ok) throw new Error('Failed to fetch infra state');
+                // console.log(await response.text());
+                const data = await response.json();
+                
+                const timeDeltaSec = lastPollTime ? Math.max(1, (now - lastPollTime) / 1000) : 1;
+
+                // Infinispan metrics
+                if (data.infinispan) {
+                    const eventsStores = data.infinispan.events?.stores || 0;
+                    const eventsEntries = data.infinispan.events?.current_number_of_entries_in_memory || 0;
+                    const etpEntries = data.infinispan['events-to-process']?.current_number_of_entries_in_memory || 0;
+
+                    updateMetric('metric-total-processed', eventsStores);
+                    updateMetric('metric-cache-entries', `${eventsEntries} entries`);
+                    updateMetric('metric-pending-errors', etpEntries);
+                    
+                    let storesRate = 0;
+                    if (lastInfraState?.infinispan) {
+                        const lastStores = lastInfraState.infinispan.events?.stores || 0;
+                        storesRate = Math.round(Math.max(0, eventsStores - lastStores) / timeDeltaSec);
+                    }
+                    updateMetric('metric-cache-stores', storesRate);
+                }
+
+                // Artemis metrics
+                if (data.artemis) {
+                    updateMetric('metric-error-queued', data.artemis['error-logs']?.MessageCount || 0);
+                    updateMetric('metric-result-queued', data.artemis['analysis-result']?.MessageCount || 0);
+                }
+
+                // Storage metrics
+                if (data.storage) {
+                    updateMetric('metric-results-stored', data.storage.fileCount || 0);
+                }
+
+                // Analyzer activity (real): use analyzer's own state API
+                // ACTIVE: analyzer reports active=true
+                // PENDING: work waiting (pending errors / error queue), but analyzer not active
+                // IDLE: nothing waiting and analyzer not active
+                const analyzerActive = data.analyzer?.active === true;
+                const analyzerTraceId = data.analyzer?.traceId || '';
+
+                const pendingErrorsRaw = data.infinispan?.['events-to-process']?.current_number_of_entries_in_memory;
+                const pendingErrorsValid = typeof pendingErrorsRaw === 'number' && pendingErrorsRaw > 0;
+                const errorQueueDepthRaw = data.artemis?.['error-logs']?.MessageCount;
+                const errorQueueDepthValid = typeof errorQueueDepthRaw === 'number' && errorQueueDepthRaw > 0;
+
+                if (analyzerActive) {
+                    setAnalyzerState('active', analyzerTraceId);
+                } else if (pendingErrorsValid || errorQueueDepthValid) {
+                    setAnalyzerState('pending');
+                } else {
+                    setAnalyzerState('idle');
+                }
+
+                document.getElementById('infra-poll-status').textContent = 'Polling Active';
+                document.getElementById('infra-poll-status').className = 'bx--tag bx--tag--blue';
+                
+                lastInfraState = data;
+                lastPollTime = now;
+            } catch (error) {
+                console.error('Error polling infra state:', error);
+                document.getElementById('infra-poll-status').textContent = 'Polling Failed';
+                document.getElementById('infra-poll-status').className = 'bx--tag bx--tag--red';
+            }
+        }
+
+        // Init
         document.getElementById('contentPanel').innerHTML = `
             <div class="empty-state">
                 <img src="https://raw.githubusercontent.com/apache/camel/refs/heads/main/docs/img/logo-d.svg" alt="Apache Camel" class="empty-state-icon">
@@ -279,9 +636,10 @@
         `;
 
         loadTraces();
+        pollInfraState();
 
-        // Auto-refresh every 15 seconds
         setInterval(loadTraces, 15000);
+        setInterval(pollInfraState, 3000); // Poll infra every 3s
     </script>
 </body>
 </html>

@@ -1,0 +1,45 @@
+# Analyzer status API (real-time processing state)
+- rest:
+    path: /api/analyzer
+    get:
+      - id: get-analyzer-state
+        path: /state
+        produces: application/json
+        to: direct:get-analyzer-state
+
+- route:
+    id: route-get-analyzer-state
+    from:
+      uri: direct:get-analyzer-state
+      steps:
+        - doTry:
+            steps:
+              - pollEnrich:
+                  expression:
+                    simple: "file:/tmp/smart-log-analyzer?fileName=analyzer-state.json&noop=true&idempotent=false"
+                  timeout: 250
+              - choice:
+                  when:
+                    - simple: "${body} != null"
+                      steps:
+                        - convertBodyTo:
+                            type: String
+                        - setHeader:
+                            name: Content-Type
+                            constant: application/json
+                  otherwise:
+                    steps:
+                      - setBody:
+                          constant: "{\"active\":false,\"traceId\":\"\",\"startedAtEpochMs\":0,\"updatedAtEpochMs\":0}"
+                      - setHeader:
+                          name: Content-Type
+                          constant: application/json
+            doCatch:
+              - exception:
+                  - java.lang.Exception
+                steps:
+                  - setBody:
+                      constant: "{\"active\":false,\"traceId\":\"\",\"startedAtEpochMs\":0,\"updatedAtEpochMs\":0}"
+                  - setHeader:
+                      name: Content-Type
+                      constant: application/json

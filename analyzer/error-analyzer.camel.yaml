@@ -11,6 +11,14 @@
         - setVariable:
             name: traceId
             simple: ${body}
+        - setHeader:
+            name: CamelFileName
+            constant: analyzer-state.json
+        - setBody:
+            simple: >-
+              {"active":true,"traceId":"${variable.traceId}","startedAtEpochMs":${messageTimestamp},"updatedAtEpochMs":${messageTimestamp}}
+        - to:
+            uri: "file:/tmp/smart-log-analyzer"
         - log:
             loggingLevel: INFO
             message: "Retrieving all events for traceId: ${variable.traceId}"
@@ -21,79 +29,85 @@
             uri: infinispan:events
             parameters:
               operation: GET
-        - choice:
-            when:
-              - simple: "${body} != null && ${body} != ''"
-                steps:
-                  - setVariable:
-                      name: recordCount
-                      jq:
-                        expression: length
-                        resultType: java.lang.String
-                  - log:
-                      message: Sending ${variable.recordCount} records to LLM for analysis
-                  - setVariable:
-                      name: eventsJson
-                      simple: ${body}
-                  - log:
-                      message: "Events JSON: ${variable.eventsJson}"
-                  - setBody:
-                      simple: >
-                        Analyze this failed request trace (traceId: ${variable.traceId}).
-                        Reconstruct the service call tree and provide a root cause analysis.
-                        IMPORTANT: include the exact service-level error messages from logs/events
-                        and JSON error bodies (for example fields like "message", "error",
-                        "service", HttpOperationFailedException text).
+        - doTry:
+            steps:
+              - choice:
+                  when:
+                    - simple: "${body} != null && ${body} != ''"
+                      steps:
+                        - setVariable:
+                            name: recordCount
+                            jq:
+                              expression: length
+                              resultType: java.lang.String
+                        - log:
+                            message: Sending ${variable.recordCount} records to LLM for analysis
+                        - setVariable:
+                            name: eventsJson
+                            simple: ${body}
+                        - setBody:
+                            simple: >
+                              Analyze this failed request trace (traceId: ${variable.traceId}).
+                              Reconstruct the service call tree and provide a root cause analysis.
+                              IMPORTANT: include the exact service-level error messages from logs/events
+                              and JSON error bodies (for example fields like "message", "error",
+                              "service", HttpOperationFailedException text).
 
-                        Events (spans and logs sorted by timestamp):
-                        ${variable.eventsJson}
-                  - setHeader:
-                      name: CamelOpenAISystemMessage
-                      constant: |
-                        You are an expert site reliability engineer debugging distributed Camel routes using OpenTelemetry traces and logs.
-                        
-                        CRITICAL INSTRUCTIONS:
-                        1. Parse spans to build an ASCII call tree using parentSpanId/spanId relationships.
-                        2. Convert durationNano to milliseconds (ms).
-                        3. Identify the originating failure span and separate it from propagated failures.
-                        4. You MUST extract and quote the exact error messages emitted by services from:
-                           - log `message` fields
-                           - exception messages
-                           - JSON error payload fields (`error`, `service`, `message`)
-                        5. Prefer concrete evidence over speculation. If an item is not present in events, do not invent it.
-                        
-                        Output EXACTLY this format, using plain text (no markdown code blocks around the tree):
+                              Events (spans and logs sorted by timestamp):
+                              ${variable.eventsJson}
+                        - setHeader:
+                            name: CamelOpenAISystemMessage
+                            constant: |
+                              You are an expert site reliability engineer debugging distributed Camel routes using OpenTelemetry traces and logs.
+                              
+                              CRITICAL INSTRUCTIONS:
+                              1. Parse spans to build an ASCII call tree using parentSpanId/spanId relationships.
+                              2. Convert durationNano to milliseconds (ms).
+                              3. Identify the originating failure span and separate it from propagated failures.
+                              4. You MUST extract and quote the exact error messages emitted by services from:
+                                 - log `message` fields
+                                 - exception messages
+                                 - JSON error payload fields (`error`, `service`, `message`)
+                              5. Prefer concrete evidence over speculation. If an item is not present in events, do not invent it.
+                              
+                              Output EXACTLY this format, using plain text (no markdown code blocks around the tree):
 
-                        Call Tree
+                              Call Tree
 
-                        [call-tree-structure]
+                              [call-tree-structure]
 
-                        Service Error Evidence
+                              Service Error Evidence
 
-                        - [service-name] "[exact log/error text]"
-                        - [service-name] "[exact log/error text]"
-                        - [service-name] "error=[...], message=[...], status=[...]"
+                              - [service-name] "[exact log/error text]"
+                              - [service-name] "[exact log/error text]"
+                              - [service-name] "error=[...], message=[...], status=[...]"
 
-                        What Happened
+                              What Happened
 
-                        [Chronological numbered list explaining the sequence of events, what succeeded, and exactly what failed.]
+                              [Chronological numbered list explaining the sequence of events, what succeeded, and exactly what failed.]
 
-                        Root Cause
+                              Root Cause
 
-                        [1-2 sentences detailing the technical failure, including HTTP code, target URL, failing service, and the exact service error message.]
-                  - to:
-                      uri: openai:chat-completion
-                  - log:
-                      message: "LLM Analysis for traceId ${variable.traceId}: ${body}"
-                  - setHeader:
-                      name: traceId
-                      simple: "${variable.traceId}"
-                  - to:
-                      uri: jms:{{camel.jms.queue.analysis-result}}
-                  - log:
-                      message: "Sent analysis result to queue for traceId: ${variable.traceId}"
-            otherwise:
+                              [1-2 sentences detailing the technical failure, including HTTP code, target URL, failing service, and the exact service error message.]
+                        - to:
+                            uri: openai:chat-completion
+                        - setHeader:
+                            name: traceId
+                            simple: "${variable.traceId}"
+                        - to:
+                            uri: jms:{{camel.jms.queue.analysis-result}}
+                  otherwise:
+                    steps:
+                      - log:
+                          loggingLevel: WARN
+                          message: "No events found in Infinispan for traceId: ${variable.traceId}"
+            doFinally:
               steps:
-                - log:
-                    loggingLevel: WARN
-                    message: "No events found in Infinispan for traceId: ${variable.traceId}"
+                - setHeader:
+                    name: CamelFileName
+                    constant: analyzer-state.json
+                - setBody:
+                    simple: >-
+                      {"active":false,"traceId":"${variable.traceId}","startedAtEpochMs":0,"updatedAtEpochMs":${messageTimestamp}}
+                - to:
+                    uri: "file:/tmp/smart-log-analyzer"

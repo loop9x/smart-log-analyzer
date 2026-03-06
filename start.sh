@@ -23,7 +23,7 @@ tmux send-keys -t "$SESSION:Analyzer" "echo 'Waiting...' && sleep ${WAIT_TIME} &
 
 # Analyzer (Horizontal split)
 tmux split-window -v -t "$SESSION:Analyzer"
-tmux send-keys -t "$SESSION:Analyzer" "echo 'Waiting...' && sleep ${WAIT_TIME} && cd analyzer && camel run error-analyzer.camel.yaml root-cause-analysis.schema.json" C-m
+tmux send-keys -t "$SESSION:Analyzer" "echo 'Waiting...' && sleep ${WAIT_TIME} && cd analyzer && camel run error-analyzer.camel.yaml status-api.camel.yaml" C-m
 
 # UI Console
 tmux split-window -v -t "$SESSION:Analyzer"
