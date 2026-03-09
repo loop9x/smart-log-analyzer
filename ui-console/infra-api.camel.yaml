@@ -22,10 +22,12 @@
         to: direct:proxy-analyzer-state
 
 - rest:
+    description: Infra API REST
     path: /api/infra
     get:
-      - id: get-cache-stats
-        path: /cache-stats
+      - id: get-infra-state
+        description: Get infra state
+        path: /state
         produces: application/json
         to: direct:cache-stats
       - id: get-queue-stats
@@ -35,7 +37,8 @@
 
 # Proxy correlator Prometheus metrics
 - route:
-    id: route-correlator-metrics
+    id: route-infra-state
+    description: Serve infra state
     from:
       uri: direct:correlator-metrics
       steps:
@@ -172,18 +175,24 @@
       uri: direct:cache-stats
       steps:
         - doTry:
+            description: Fetch events stats
             steps:
               - removeHeaders:
+                  description: Clear headers
                   pattern: "*"
               - setHeader:
+                  description: Set stats query
                   name: CamelHttpQuery
                   constant: "action=stats"
               - toD:
+                  description: Get events stats
                   uri: "http://{{infra.infinispan.host}}/rest/v2/caches/events?authMethod=Digest&authUsername={{infra.infinispan.user}}&authPassword={{infra.infinispan.password}}"
               - convertBodyTo:
+                  description: Body to string
                   type: String
               - setVariable:
-                  name: eventsEntries
+                  description: Extract entry count
+                  name: infinispanEventsEntries
                   jq:
                     expression: >
                       (.current_number_of_entries_in_memory // -1) as $c |
@@ -191,39 +200,80 @@
                       else (.approximate_entries_in_memory // .approximate_entries // 0)
                       end
                     resultType: java.lang.String
-              - removeHeaders:
-                  pattern: "*"
-              - setHeader:
-                  name: CamelHttpQuery
-                  constant: "action=stats"
-              - toD:
-                  uri: "http://{{infra.infinispan.host}}/rest/v2/caches/events-to-process?authMethod=Digest&authUsername={{infra.infinispan.user}}&authPassword={{infra.infinispan.password}}"
-              - convertBodyTo:
-                  type: String
               - setVariable:
-                  name: etpEntries
+                  description: Extract store count
+                  name: infinispanEventsStores
                   jq:
-                    expression: >
-                      (.current_number_of_entries_in_memory // -1) as $c |
-                      if $c >= 0 then $c
-                      else (.approximate_entries_in_memory // .approximate_entries // 0)
-                      end
+                    expression: .stores // 0
                     resultType: java.lang.String
-              - setBody:
-                  simple: >-
-                    {"events":${variable.eventsEntries},"eventsToProcess":${variable.etpEntries}}
-              - setHeader:
-                  name: Content-Type
-                  constant: application/json
             doCatch:
               - exception:
                   - java.lang.Exception
+                description: Catch fetch error
                 steps:
-                  - setBody:
-                      constant: '{"events":-1,"eventsToProcess":-1}'
-                  - setHeader:
-                      name: Content-Type
-                      constant: application/json
+                  - setVariable:
+                      description: Set default count
+                      name: infinispanEventsEntries
+                      constant: "-1"
+                  - setVariable:
+                      description: Set default stores
+                      name: infinispanEventsStores
+                      constant: "-1"
+                  - log:
+                      description: Log fetch failure
+                      message: "Failed to fetch Infinispan events stats: ${exception.message}"
+                      loggingLevel: WARN
+
+        # 2. Infinispan "events-to-process" cache stats
+        - doTry:
+            description: Fetch ETP stats
+            steps:
+              - removeHeaders:
+                  description: Clear headers
+                  pattern: "*"
+              - setHeader:
+                  description: Set stats query
+                  name: CamelHttpQuery
+                  constant: "action=stats"
+              - toD:
+                  description: Get ETP stats
+                  uri: "http://{{infra.infinispan.host}}/rest/v2/caches/events-to-process?authMethod=Digest&authUsername={{infra.infinispan.user}}&authPassword={{infra.infinispan.password}}"
+              - convertBodyTo:
+                  description: Body to string
+                  type: String
+              - setVariable:
+                  description: Extract entry count
+                  name: infinispanEtpEntries
+                  jq:
+                    expression: >
+                      (.current_number_of_entries_in_memory // -1) as $c |
+                      if $c >= 0 then $c
+                      else (.approximate_entries_in_memory // .approximate_entries // 0)
+                      end
+                    resultType: java.lang.String
+              - setVariable:
+                  description: Extract store count
+                  name: infinispanEtpStores
+                  jq:
+                    expression: .stores // 0
+                    resultType: java.lang.String
+            doCatch:
+              - exception:
+                  - java.lang.Exception
+                description: Catch fetch error
+                steps:
+                  - setVariable:
+                      description: Set default count
+                      name: infinispanEtpEntries
+                      constant: "-1"
+                  - setVariable:
+                      description: Set default stores
+                      name: infinispanEtpStores
+                      constant: "-1"
+                  - log:
+                      description: Log fetch failure
+                      message: "Failed to fetch Infinispan events-to-process stats: ${exception.message}"
+                      loggingLevel: WARN
 
 # Artemis queue stats (error-logs + analysis-result message counts)
 - route:
@@ -232,57 +282,222 @@
       uri: direct:queue-stats
       steps:
         - doTry:
+            description: Fetch error queue
             steps:
               - removeHeaders:
+                  description: Clear headers
                   pattern: "*"
               - setBody:
+                  description: Clear body
                   simple: "${null}"
               - setHeader:
+                  description: Set queue name
                   name: _AMQ_ResourceName
                   constant: "queue.error-logs"
               - setHeader:
+                  description: Set attribute
                   name: _AMQ_Attribute
                   constant: "messageCount"
               - to:
+                  description: Query queue stats
                   uri: "jms:queue:activemq.management?exchangePattern=InOut&requestTimeout=3000"
               - convertBodyTo:
+                  description: Body to string
                   type: String
               - setVariable:
-                  name: errorLogsCount
+                  description: Parse message count
+                  name: errorLogsMessageCount
                   jq:
                     expression: "try (.[0] | tonumber) catch -1"
                     resultType: java.lang.String
-              - removeHeaders:
-                  pattern: "*"
-              - setBody:
-                  simple: "${null}"
-              - setHeader:
-                  name: _AMQ_ResourceName
-                  constant: "queue.analysis-result"
-              - setHeader:
-                  name: _AMQ_Attribute
-                  constant: "messageCount"
-              - to:
-                  uri: "jms:queue:activemq.management?exchangePattern=InOut&requestTimeout=3000"
-              - convertBodyTo:
-                  type: String
               - setVariable:
-                  name: analysisResultCount
-                  jq:
-                    expression: "try (.[0] | tonumber) catch -1"
-                    resultType: java.lang.String
-              - setBody:
-                  simple: >-
-                    {"errorLogs":${variable.errorLogsCount},"analysisResult":${variable.analysisResultCount}}
-              - setHeader:
-                  name: Content-Type
-                  constant: application/json
+                  description: Init added count
+                  name: errorLogsMessagesAdded
+                  constant: "-1"
+              - setVariable:
+                  description: Init acked count
+                  name: errorLogsMessagesAcked
+                  constant: "-1"
             doCatch:
               - exception:
                   - java.lang.Exception
+                description: Catch fetch error
                 steps:
-                  - setBody:
-                      constant: '{"errorLogs":-1,"analysisResult":-1}'
-                  - setHeader:
-                      name: Content-Type
-                      constant: application/json
+                  - setVariable:
+                      description: Set default count
+                      name: errorLogsMessageCount
+                      constant: "-1"
+                  - setVariable:
+                      description: Init added count
+                      name: errorLogsMessagesAdded
+                      constant: "-1"
+                  - setVariable:
+                      description: Init acked count
+                      name: errorLogsMessagesAcked
+                      constant: "-1"
+                  - log:
+                      description: Log fetch failure
+                      message: "Failed to fetch Artemis error-logs stats: ${exception.message}"
+                      loggingLevel: WARN
+
+        # 4. Artemis "analysis-result" queue stats via management address (JMS)
+        - doTry:
+            description: Fetch result queue
+            steps:
+              - removeHeaders:
+                  description: Clear headers
+                  pattern: "*"
+              - setBody:
+                  description: Clear body
+                  simple: "${null}"
+              - setHeader:
+                  description: Set queue name
+                  name: _AMQ_ResourceName
+                  constant: "queue.analysis-result"
+              - setHeader:
+                  description: Set attribute
+                  name: _AMQ_Attribute
+                  constant: "messageCount"
+              - to:
+                  description: Query queue stats
+                  uri: "jms:queue:activemq.management?exchangePattern=InOut&requestTimeout=3000"
+              - convertBodyTo:
+                  description: Body to string
+                  type: String
+              - setVariable:
+                  description: Parse message count
+                  name: analysisResultMessageCount
+                  jq:
+                    expression: "try (.[0] | tonumber) catch -1"
+                    resultType: java.lang.String
+              - setVariable:
+                  description: Init added count
+                  name: analysisResultMessagesAdded
+                  constant: "-1"
+              - setVariable:
+                  description: Init acked count
+                  name: analysisResultMessagesAcked
+                  constant: "-1"
+            doCatch:
+              - exception:
+                  - java.lang.Exception
+                description: Catch fetch error
+                steps:
+                  - setVariable:
+                      description: Set default count
+                      name: analysisResultMessageCount
+                      constant: "-1"
+                  - setVariable:
+                      description: Init added count
+                      name: analysisResultMessagesAdded
+                      constant: "-1"
+                  - setVariable:
+                      description: Init acked count
+                      name: analysisResultMessagesAcked
+                      constant: "-1"
+                  - log:
+                      description: Log fetch failure
+                      message: "Failed to fetch Artemis analysis-result stats: ${exception.message}"
+                      loggingLevel: WARN
+
+        # 5. Count stored result files
+        - setVariable:
+            description: Set storage path
+            name: storagePath
+            simple: "{{analyzer.storage.root}}"
+        - setVariable:
+            description: Count stored files
+            name: fileCount
+            groovy: |
+              import java.nio.file.*
+              def path = Paths.get(exchange.getVariable('storagePath'))
+              if (!Files.exists(path)) return "0"
+              def files = Files.list(path).filter(p -> Files.isRegularFile(p) && p.toString().endsWith('.txt')).toList()
+              def count = files.size()
+              def lastWrite = 0L
+              for (def p : files) {
+                try {
+                  def lm = Files.getLastModifiedTime(p).toMillis()
+                  if (lm > lastWrite) lastWrite = lm
+                } catch (Exception ignored) {}
+              }
+              exchange.setVariable('lastWriteEpochMs', String.valueOf(lastWrite))
+              return String.valueOf(count)
+
+        # 5b. Analyzer state (real-time, from analyzer service)
+        - doTry:
+            description: Fetch analyzer state
+            steps:
+              - removeHeaders:
+                  description: Clear headers
+                  pattern: "*"
+              - setHeader:
+                  description: Set HTTP method
+                  name: CamelHttpMethod
+                  constant: GET
+              - toD:
+                  description: Call analyzer API
+                  uri: "http://{{infra.analyzer.host}}/api/analyzer/state"
+              - convertBodyTo:
+                  description: Body to string
+                  type: String
+              - setVariable:
+                  description: Extract active flag
+                  name: analyzerActive
+                  jq:
+                    expression: .active // false
+                    resultType: java.lang.String
+              - setVariable:
+                  description: Extract trace ID
+                  name: analyzerTraceId
+                  jq:
+                    expression: .traceId // ""
+                    resultType: java.lang.String
+              - setVariable:
+                  description: Extract update time
+                  name: analyzerUpdatedAt
+                  jq:
+                    expression: .updatedAtEpochMs // 0
+                    resultType: java.lang.String
+            doCatch:
+              - exception:
+                  - java.lang.Exception
+                description: Catch fetch error
+                steps:
+                  - setVariable:
+                      description: Set default active
+                      name: analyzerActive
+                      constant: "false"
+                  - setVariable:
+                      description: Set default trace
+                      name: analyzerTraceId
+                      constant: ""
+                  - setVariable:
+                      description: Set default update
+                      name: analyzerUpdatedAt
+                      constant: "0"
+
+        # 6. Assemble JSON response from variables
+        - setBody:
+            description: Build infra JSON
+            simple: >-
+              {"infinispan":{"events":{"current_number_of_entries_in_memory":${variable.infinispanEventsEntries},
+              "stores":${variable.infinispanEventsStores}},
+              "events-to-process":{"current_number_of_entries_in_memory":${variable.infinispanEtpEntries},
+              "stores":${variable.infinispanEtpStores}}},
+              "artemis":{"error-logs":{"MessageCount":${variable.errorLogsMessageCount},
+              "MessagesAdded":${variable.errorLogsMessagesAdded},
+              "MessagesAcknowledged":${variable.errorLogsMessagesAcked}},
+              "analysis-result":{"MessageCount":${variable.analysisResultMessageCount},
+              "MessagesAdded":${variable.analysisResultMessagesAdded},
+              "MessagesAcknowledged":${variable.analysisResultMessagesAcked}}},
+              "storage":{"fileCount":${variable.fileCount},"lastWriteEpochMs":${variable.lastWriteEpochMs}},
+              "analyzer":{"active":${variable.analyzerActive},"traceId":"${variable.analyzerTraceId}","updatedAtEpochMs":${variable.analyzerUpdatedAt}}}
+        - setHeader:
+            description: Set JSON type
+            name: Content-Type
+            constant: application/json
+        - setHeader:
+            description: Set HTTP 200
+            name: CamelHttpResponseCode
+            constant: 200

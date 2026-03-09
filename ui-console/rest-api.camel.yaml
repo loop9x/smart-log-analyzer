@@ -1,23 +1,29 @@
 - rest:
+    description: Traces API REST
     path: /api/traces
     get:
       - id: list-traces
+        description: List traces
         produces: application/json
         to: direct:list-traces
       - id: get-trace-by-id
+        description: Get trace
         path: /{id}
         produces: application/json
         to: direct:get-trace
 
 - route:
     id: route-list-traces
+    description: List stored traces
     from:
       uri: direct:list-traces
       steps:
         - setVariable:
+            description: Set storage path
             name: storagePath
             simple: "{{analyzer.storage.root}}"
         - setBody:
+            description: List trace files
             groovy: |
               import java.nio.file.*
               try {
@@ -38,47 +44,61 @@
                 return []
               }
         - marshal:
+            description: Marshal JSON
             json:
               library: Jackson
         - setHeader:
+            description: Set JSON type
             name: Content-Type
             constant: application/json
 
 - route:
     id: route-get-trace
+    description: Fetch trace file
     from:
       uri: direct:get-trace
       steps:
         - setVariable:
+            description: Read trace ID
             name: traceId
             simple: ${header.id}
         - pollEnrich:
+            description: Read trace file
             expression:
               simple: file:{{analyzer.storage.root}}?fileName=${variable.traceId}.txt&noop=true&idempotent=false
             timeout: 1000
         - choice:
+            description: Check file found
             when:
               - simple: ${body} != null
                 steps:
                   - convertBodyTo:
+                      description: Body to string
                       type: String
                   - setVariable:
+                      description: Save file content
                       name: fileContent
                       simple: ${body}
                   - marshal:
+                      description: Marshal JSON
                       json: {}
                   - setBody:
+                      description: Build trace JSON
                       simple: '{"id":"${variable.traceId}","content":${body}}'
                   - setHeader:
+                      description: Set JSON type
                       name: Content-Type
                       constant: application/json
             otherwise:
               steps:
                 - setHeader:
+                    description: Set HTTP 404
                     name: CamelHttpResponseCode
                     constant: 404
                 - setBody:
+                    description: Set error body
                     constant: '{"error":"Trace not found"}'
                 - setHeader:
+                    description: Set JSON type
                     name: Content-Type
                     constant: application/json
