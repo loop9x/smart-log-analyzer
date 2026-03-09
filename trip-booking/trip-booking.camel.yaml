@@ -1,141 +1,183 @@
 - rest:
+    description: Trip REST API
     path: /camel
     get:
       - id: bookTrip-rest
+        description: Book trip sync
         path: /bookTrip
         produces: application/json
         to: direct:bookTrip
       - id: asyncBookTrip-rest
+        description: Book trip async
         path: /asyncBookTrip
         to: direct:asyncBookTrip
 
 # Sync: fan out to car/flight/hotel over HTTP, aggregate results
 - route:
     id: bookTrip-http
+    description: Book trip sync
     from:
       uri: direct:bookTrip
       steps:
         - log:
+            description: Log trip request
             message: "New book trip request with trace=${header.traceparent}"
             logName: com.example.trip.TripBookingService
         - choice:
+            description: Validate trip
             when:
               - simple: "${random(0,100)} < 4"
                 steps:
                   - log:
+                      description: Log validation error
                       message: "Trip validation failed: travel dates overlap with blocked period"
                       loggingLevel: ERROR
                       logName: com.example.trip.TripBookingService
                   - throwException:
+                      description: Throw validation error
                       message: "Validation error: travel dates overlap with blocked period"
                       exceptionType: java.lang.IllegalArgumentException
         - removeHeaders:
+            description: Clear HTTP headers
             pattern: "CamelHttp*"
         - setHeader:
+            description: Set HTTP method
             name: CamelHttpMethod
             constant: GET
         - to:
+            description: Call car service
             uri: "http://{{service.car}}/camel/bookCar?bridgeEndpoint=true"
         - convertBodyTo:
+            description: Body to string
             type: String
         - setVariable:
+            description: Save car result
             name: carResult
             simple: "${body}"
         - removeHeaders:
+            description: Clear HTTP headers
             pattern: "CamelHttp*"
         - setHeader:
+            description: Set HTTP method
             name: CamelHttpMethod
             constant: GET
         - to:
+            description: Call flight service
             uri: "http://{{service.flight}}/camel/bookFlight?bridgeEndpoint=true"
         - convertBodyTo:
+            description: Body to string
             type: String
         - setVariable:
+            description: Save flight result
             name: flightResult
             simple: "${body}"
         - removeHeaders:
+            description: Clear HTTP headers
             pattern: "CamelHttp*"
         - setHeader:
+            description: Set HTTP method
             name: CamelHttpMethod
             constant: GET
         - to:
+            description: Call hotel service
             uri: "http://{{service.hotel}}/camel/bookHotel?bridgeEndpoint=true"
         - convertBodyTo:
+            description: Body to string
             type: String
         - setVariable:
+            description: Save hotel result
             name: hotelResult
             simple: "${body}"
         - setBody:
+            description: Build results list
             simple: "[${variable.carResult}, ${variable.flightResult}, ${variable.hotelResult}]"
         - log:
+            description: Log trip response
             message: "Response: ${body}"
             logName: com.example.trip.TripBookingService
 
 # Async: publish to Kafka topics
 - route:
     id: bookTrip-kafka-request
+    description: Book trip async
     from:
       uri: direct:asyncBookTrip
       steps:
         - log:
+            description: Log async request
             message: "New book trip request via Kafka"
             logName: com.example.trip.TripBookingService
         - setBody:
+            description: Set request body
             simple: "New async request"
         - choice:
+            description: Simulate broker error
             when:
               - simple: "${random(0,100)} < 4"
                 steps:
                   - log:
+                      description: Log broker error
                       message: "Kafka broker unavailable while publishing trip request"
                       loggingLevel: ERROR
                       logName: com.example.trip.TripBookingService
                   - throwException:
+                      description: Throw broker error
                       message: "Kafka unavailable while publishing async trip request"
                       exceptionType: java.lang.RuntimeException
             otherwise:
               steps:
                 - multicast:
+                    description: Publish booking requests
                     steps:
                       - to:
+                          description: Send car request
                           uri: kafka:car_input
                       - to:
+                          description: Send flight request
                           uri: kafka:flight_input
                       - to:
+                          description: Send hotel request
                           uri: kafka:hotel_input
         - setBody:
+            description: Set async response
             constant: "Async trip booking request sent"
 
 # Consume async responses from Kafka
 - route:
     id: bookTrip-car-output
+    description: Consume car response
     from:
       uri: kafka:car_output
       parameters:
         groupId: trip-booking
       steps:
         - log:
+            description: Log car response
             message: "Received car booking response via Kafka: ${body}"
             logName: com.example.trip.TripBookingService
 
 - route:
     id: bookTrip-flight-output
+    description: Consume flight response
     from:
       uri: kafka:flight_output
       parameters:
         groupId: trip-booking
       steps:
         - log:
+            description: Log flight response
             message: "Received flight booking response via Kafka: ${body}"
             logName: com.example.trip.TripBookingService
 
 - route:
     id: bookTrip-hotel-output
+    description: Consume hotel response
     from:
       uri: kafka:hotel_output
       parameters:
         groupId: trip-booking
       steps:
         - log:
+            description: Log hotel response
             message: "Received hotel booking response via Kafka: ${body}"
             logName: com.example.trip.TripBookingService

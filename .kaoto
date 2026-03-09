@@ -22,7 +22,10 @@
 			"fieldTypeOverrides": []
 		},
 		"xsltPath": "kaoto-datamapper-4a94acc3.xsl",
-		"namespaceMap": {}
+		"namespaceMap": {
+			"xs": "http://www.w3.org/2001/XMLSchema",
+			"fn": "http://www.w3.org/2005/xpath-functions"
+		}
 	},
 	"kaoto-datamapper-8f5bb2dd": {
 		"sourceBody": {
@@ -47,6 +50,9 @@
 			"fieldTypeOverrides": []
 		},
 		"xsltPath": "kaoto-datamapper-8f5bb2dd.xsl",
-		"namespaceMap": {}
+		"namespaceMap": {
+			"xs": "http://www.w3.org/2001/XMLSchema",
+			"fn": "http://www.w3.org/2005/xpath-functions"
+		}
 	}
 }

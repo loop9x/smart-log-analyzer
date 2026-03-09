@@ -1,75 +1,95 @@
 - rest:
+    description: Hotel REST API
     path: /camel
     get:
       - id: bookHotel-rest
+        description: Book hotel sync
         path: /bookHotel
         produces: application/json
         to: direct:bookHotel
 
 - route:
     id: bookHotel-http
+    description: Book hotel sync
     from:
       uri: direct:bookHotel
       steps:
         - log:
+            description: Log hotel request
             message: "New book hotel request with trace=${header.traceparent}"
             logName: com.example.hotel.HotelBookingService
         - log:
+            description: Log availability check
             message: "Checking hotel room availability"
             logName: com.example.hotel.HotelBookingService
         - choice:
+            description: Simulate provider issues
             when:
               - simple: "${random(0,100)} < 10"
                 steps:
                   - log:
+                      description: Log partner outage
                       message: "Partner hotel inventory service unavailable"
                       loggingLevel: WARN
                       logName: com.example.hotel.ExternalHotelProvider
                   - setHeader:
+                      description: Set HTTP 503
                       name: CamelHttpResponseCode
                       constant: "503"
                   - setBody:
+                      description: Set error JSON
                       constant: '{"error":"Service Unavailable","service":"hotel-booking","message":"Partner hotel inventory returned 503"}'
               - simple: "${random(0,100)} < 8"
                 steps:
                   - log:
+                      description: Log pricing issue
                       message: "Room pricing calculation returned invalid result"
                       loggingLevel: WARN
                       logName: com.example.hotel.PricingPolicyService
                   - setHeader:
+                      description: Set HTTP 500
                       name: CamelHttpResponseCode
                       constant: "500"
                   - setBody:
+                      description: Set error JSON
                       constant: '{"error":"Internal Server Error","service":"hotel-booking","message":"Nightly rate calculation returned negative value"}'
             otherwise:
               steps:
                 - setBody:
+                    description: Set success JSON
                     simple: '{"bookingId":${random(1,1000)},"hotel":"Sheraton","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(150,300)}}'
 
 - route:
     id: bookHotel-kafka
+    description: Book hotel async
     from:
       uri: kafka:hotel_input
       parameters:
         groupId: hotel-booking
       steps:
         - log:
+            description: Log Kafka request
             message: "New book hotel request via Kafka topic"
             logName: com.example.hotel.HotelBookingService
         - choice:
+            description: Simulate broker error
             when:
               - simple: "${random(0,100)} < 10"
                 steps:
                   - log:
+                      description: Log broker timeout
                       message: "Broker timeout while publishing hotel confirmation"
                       loggingLevel: ERROR
                       logName: com.example.hotel.HotelBookingService
                   - throwException:
+                      description: Throw broker timeout
                       message: "Timeout while publishing hotel booking response to Kafka"
                       exceptionType: java.lang.RuntimeException
             otherwise:
               steps:
                 - setBody:
+                    description: Set success JSON
                     simple: '{"bookingId":${random(1,1000)},"hotel":"Marriott","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(150,300)}}'
                 - to:
+                    description: Send response Kafka
                     uri: kafka:hotel_output

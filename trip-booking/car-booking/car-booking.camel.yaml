@@ -1,75 +1,95 @@
 - rest:
+    description: Car REST API
     path: /camel
     get:
       - id: bookCar-rest
+        description: Book car sync
         path: /bookCar
         produces: application/json
         to: direct:bookCar
 
 - route:
     id: bookCar-http
+    description: Book car sync
     from:
       uri: direct:bookCar
       steps:
         - log:
+            description: Log car request
             message: "New book car request with trace=${header.traceparent}"
             logName: com.example.car.CarBookingService
         - log:
+            description: Log booking start
             message: "Processing car booking request"
             logName: com.example.car.CarBookingService
         - choice:
+            description: Simulate provider issues
             when:
               - simple: "${random(0,100)} < 5"
                 steps:
                   - log:
+                      description: Log provider error
                       message: "External car provider returned error for request"
                       loggingLevel: WARN
                       logName: com.example.car.ExternalCarProvider
                   - setHeader:
+                      description: Set HTTP 502
                       name: CamelHttpResponseCode
                       constant: "502"
                   - setBody:
+                      description: Set error JSON
                       constant: '{"error":"Bad Gateway","service":"car-booking","message":"External car provider API returned invalid response"}'
               - simple: "${random(0,100)} < 10"
                 steps:
                   - log:
+                      description: Log pricing issue
                       message: "Car pricing calculation returned inconsistent result"
                       loggingLevel: WARN
                       logName: com.example.car.PricingService
                   - setHeader:
+                      description: Set HTTP 500
                       name: CamelHttpResponseCode
                       constant: "500"
                   - setBody:
+                      description: Set error JSON
                       constant: '{"error":"Internal Server Error","service":"car-booking","message":"Pricing engine returned negative net amount"}'
             otherwise:
               steps:
                 - setBody:
+                    description: Set success JSON
                     simple: '{"bookingId":${random(1,1000)},"car":"Toyota Corolla","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(140,165)}}'
 
 - route:
     id: bookCar-kafka
+    description: Book car async
     from:
       uri: kafka:car_input
       parameters:
         groupId: car-booking
       steps:
         - log:
+            description: Log Kafka request
             message: "New book car request via Kafka topic"
             logName: com.example.car.CarBookingService
         - choice:
+            description: Simulate send error
             when:
               - simple: "${random(0,100)} < 10"
                 steps:
                   - log:
+                      description: Log send failure
                       message: "Failed to write car booking confirmation event"
                       loggingLevel: ERROR
                       logName: com.example.car.CarBookingService
                   - throwException:
+                      description: Throw send failure
                       message: "Kafka send failure for car_output topic"
                       exceptionType: java.lang.RuntimeException
             otherwise:
               steps:
                 - setBody:
+                    description: Set success JSON
                     simple: '{"bookingId":${random(1,1000)},"car":"Honda Civic","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(140,165)}}'
                 - to:
+                    description: Send response Kafka
                     uri: kafka:car_output

@@ -1,77 +1,98 @@
 - rest:
+    description: Flight REST API
     path: /camel
     get:
       - id: bookFlight-rest
+        description: Book flight sync
         path: /bookFlight
         produces: application/json
         to: direct:bookFlight
 
 - route:
     id: bookFlight-http
+    description: Book flight sync
     from:
       uri: direct:bookFlight
       steps:
         - log:
+            description: Log flight request
             message: "New book flight request with trace=${header.traceparent}"
             logName: com.example.flight.FlightBookingService
         - log:
+            description: Log inventory query
             message: "Querying airline inventory"
             logName: com.example.flight.FlightBookingService
         - choice:
+            description: Simulate provider issues
             when:
               - simple: "${random(0,100)} < 5"
                 steps:
                   - delay:
+                      description: Delay response
                       constant: "800"
                   - log:
+                      description: Log inventory timeout
                       message: "Airline inventory service did not respond in time"
                       loggingLevel: WARN
                       logName: com.example.flight.ExternalFlightProvider
                   - setHeader:
+                      description: Set HTTP 504
                       name: CamelHttpResponseCode
                       constant: "504"
                   - setBody:
+                      description: Set error JSON
                       constant: '{"error":"Gateway Timeout","service":"flight-booking","message":"Airline inventory service did not respond within 3000ms"}'
               - simple: "${random(0,100)} < 8"
                 steps:
                   - log:
+                      description: Log fare issue
                       message: "Fare service returned incomplete pricing data"
                       loggingLevel: WARN
                       logName: com.example.flight.FareService
                   - setHeader:
+                      description: Set HTTP 500
                       name: CamelHttpResponseCode
                       constant: "500"
                   - setBody:
+                      description: Set error JSON
                       constant: '{"error":"Internal Server Error","service":"flight-booking","message":"Fare service response missing required price field"}'
             otherwise:
               steps:
                 - setBody:
+                    description: Set success JSON
                     simple: '{"bookingId":${random(1,1000)},"flight":"Delta Air Lines ${random(1000,9999)}","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(100,200)}}'
 
 - route:
     id: bookFlight-kafka
+    description: Book flight async
     from:
       uri: kafka:flight_input
       parameters:
         groupId: flight-booking
       steps:
         - log:
+            description: Log Kafka request
             message: "New book flight request via Kafka topic"
             logName: com.example.flight.FlightBookingService
         - choice:
+            description: Simulate DB error
             when:
               - simple: "${random(0,100)} < 10"
                 steps:
                   - log:
+                      description: Log DB deadlock
                       message: "Transient DB lock while saving flight booking"
                       loggingLevel: ERROR
                       logName: com.example.flight.FlightBookingService
                   - throwException:
+                      description: Throw deadlock
                       message: "Deadlock detected while saving async flight booking"
                       exceptionType: java.lang.RuntimeException
             otherwise:
               steps:
                 - setBody:
+                    description: Set success JSON
                     simple: '{"bookingId":${random(1,1000)},"flight":"Lufthansa ${random(1000,9999)}","startDate":"12-11-2018","endDate":"15-11-2018","price":${random(100,200)}}'
                 - to:
+                    description: Send response Kafka
                     uri: kafka:flight_output

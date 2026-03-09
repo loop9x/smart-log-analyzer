@@ -2,42 +2,33 @@
 # realistic OpenTelemetry traces and logs across the booking microservices
 - route:
     id: sync-load-generator
+    description: Generate sync load
     from:
       uri: timer:syncLoadGenerator
       parameters:
         period: "{{timer.period:5000}}"
         fixedRate: true
       steps:
-        - log:
-            message: "Sending sync trip booking request"
-            logName: com.example.loadgen.LoadGenerator
-        - removeHeaders:
-            pattern: "*"
         - to:
-            uri: "http://{{service.trip}}/camel/bookTrip"
-        - convertBodyTo:
-            type: String
+            description: Call trip API
+            uri: http://{{service.trip}}/camel/bookTrip
         - log:
+            description: Log sync reply
             message: "Trip booking response: ${body}"
             logName: com.example.loadgen.LoadGenerator
-
 - route:
     id: async-load-generator
+    description: Generate async load
     from:
       uri: timer:asyncLoadGenerator
       parameters:
         period: "{{timer.async.period:8000}}"
         fixedRate: true
       steps:
-        - log:
-            message: "Sending async trip booking request"
-            logName: com.example.loadgen.LoadGenerator
-        - removeHeaders:
-            pattern: "*"
         - to:
-            uri: "http://{{service.trip}}/camel/asyncBookTrip"
-        - convertBodyTo:
-            type: String
+            description: Call trip API
+            uri: http://{{service.trip}}/camel/asyncBookTrip
         - log:
+            description: Log async reply
             message: "Async trip booking response: ${body}"
             logName: com.example.loadgen.LoadGenerator
