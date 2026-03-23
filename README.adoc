@@ -213,3 +213,29 @@ camel run *
 | OTEL Collector | 4317, 4318 | Telemetry receiver (gRPC, HTTP)
 | ActiveMQ Artemis | 61616, 8161 | JMS broker (artemis:artemis)
 |===
+
+== Metrics (Micrometer + Prometheus)
+
+Each Camel component exposes Micrometer metrics via a Prometheus scrape endpoint on its management port.
+
+[cols="1,1,2"]
+|===
+| Component | Metrics Endpoint | Custom Metrics
+
+| Correlator | http://localhost:9090/observe/metrics | `correlator.events.stored` (tagged by `type`), `correlator.errors.detected`, `correlator.events.expired`
+| Analyzer | http://localhost:9091/observe/metrics | `analyzer.analyses.completed`, `analyzer.analyses.notfound`, `analyzer.llm.duration` (timer)
+| UI Console | http://localhost:9092/observe/metrics | `ui.results.stored`
+|===
+
+In addition to custom metrics, Camel auto-registers route-level metrics via `MicrometerRoutePolicyFactory`:
+
+* `camel_exchanges_total` — total exchanges per route (use `routeId=log-consumer` / `routeId=trace-consumer` for per-type throughput)
+* `camel_exchanges_succeeded_total` / `camel_exchanges_failed_total`
+* `camel_route_policy_seconds` — exchange duration histogram per route
+
+JVM metrics (`jvm-memory`, `jvm-gc`, `processor`) are also exposed on each endpoint via Micrometer binders.
+
+The UI Console also proxies metrics for convenience:
+
+* `GET /api/metrics/correlator` — proxies correlator Prometheus metrics
+* `GET /api/metrics/analyzer` — proxies analyzer Prometheus metrics
