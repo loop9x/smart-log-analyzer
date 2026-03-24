@@ -5,6 +5,10 @@ WAIT_TIME=10
 OTEL_AGENT_JAR="$PWD/trip-booking/log-generator/opentelemetry-javaagent.jar"
 OTEL_ENV="export JAVA_TOOL_OPTIONS='-javaagent:$OTEL_AGENT_JAR' && export OTEL_TRACES_EXPORTER=otlp && export OTEL_LOGS_EXPORTER=otlp && export OTEL_METRICS_EXPORTER=none"
 
+export OPENAI_API_KEY=your-api-key
+export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama example
+export OPENAI_MODEL=granite-4-0-h-tiny
+
 # 1. Cleanup old session if it exists to start fresh
 tmux kill-session -t $SESSION 2>/dev/null
 
@@ -53,3 +57,4 @@ tmux select-layout -t "$SESSION:App-Services" tiled
 # 3. Finalize
 tmux select-window -t "$SESSION:Analyzer"
 env -u TMUX tmux attach-session -t $SESSION
+
