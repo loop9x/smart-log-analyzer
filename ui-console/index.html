@@ -193,7 +193,7 @@
             50% { filter: drop-shadow(0px 0px 6px rgba(25, 128, 56, 0.6)); }
             100% { filter: drop-shadow(0px 0px 0px rgba(25, 128, 56, 0)); }
         }
-        
+
         .node-text-title {
             font-family: 'IBM Plex Sans', sans-serif;
             font-weight: 600;
@@ -201,7 +201,7 @@
             fill: #161616;
             text-anchor: middle;
         }
-        
+
         .node-text-sub {
             font-family: 'IBM Plex Sans', sans-serif;
             font-size: 12px;
@@ -215,7 +215,7 @@
             fill: #0f62fe;
             text-anchor: middle;
         }
-        
+
         .metric-label {
             font-family: 'IBM Plex Sans', sans-serif;
             font-size: 10px;
@@ -226,10 +226,83 @@
         .view-section {
             display: none;
         }
-        
+
         .view-section.active {
             display: flex;
         }
+
+        .node-clickable { cursor: pointer; }
+        .node-clickable:hover .node-rect { stroke-width: 3; filter: drop-shadow(0 0 4px rgba(15,98,254,0.4)); }
+
+        /* Modal styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(22, 22, 22, 0.7);
+            z-index: 9000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-content {
+            background: #ffffff;
+            width: 560px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e0e0e0;
+            background: #f4f4f4;
+        }
+        .modal-header h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        .modal-close {
+            background: none; border: none; cursor: pointer;
+            font-size: 1.25rem; color: #525252; padding: 0.25rem;
+        }
+        .modal-close:hover { color: #161616; }
+        .modal-body { padding: 1.5rem; }
+        .modal-section { margin-bottom: 1.25rem; }
+        .modal-section:last-child { margin-bottom: 0; }
+        .modal-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.32px;
+            color: #525252;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .modal-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            font-size: 0.875rem;
+        }
+        .modal-row-label { color: #525252; }
+        .modal-row-value { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: #161616; }
+        .modal-bar-container {
+            margin-top: 0.25rem;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .modal-bar {
+            height: 100%;
+            background: #0f62fe;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        .modal-bar.warn { background: #f1c21b; }
+        .modal-bar.danger { background: #da1e28; }
     </style>
 </head>
 <body class="bx--body">
@@ -282,90 +355,97 @@
                         <span id="infra-poll-status" class="bx--tag bx--tag--blue">Polling Active</span>
                     </div>
                 </div>
-                
+
                 <div style="flex: 1; min-height: 500px; display: flex; justify-content: center; align-items: center; background-color: #f4f4f4; border: 1px solid #e0e0e0;">
-                    <svg id="infra-canvas" width="1000" height="460" viewBox="0 0 1000 460">
+                    <svg id="infra-canvas" width="1100" height="480" viewBox="0 0 1100 480">
                         <defs>
                             <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
                                 <polygon points="0 0, 10 3.5, 0 7" fill="#8d8d8d" />
                             </marker>
                         </defs>
-                        
+
                         <!-- Edges -->
                         <!-- N1 to N2 -->
-                        <path d="M 200 80 L 270 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
-                        <text x="235" y="68" class="metric-label">spans and logs</text>
-                        
+                        <path d="M 180 80 L 280 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="230" y="68" class="metric-label">spans and logs</text>
+
                         <!-- N2 to N3 -->
-                        <path d="M 440 80 L 510 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
-                        <text x="475" y="60" class="metric-text" id="metric-total-processed">0</text>
-                        <text x="475" y="72" class="metric-label">total processed</text>
+                        <path d="M 460 80 L 560 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="510" y="60" class="metric-text" id="metric-total-processed">0</text>
+                        <text x="510" y="72" class="metric-label">total processed</text>
 
                         <!-- N3 to N4 -->
-                        <path d="M 680 80 L 750 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
-                        <text x="715" y="60" class="metric-text" id="metric-cache-stores">0</text>
-                        <text x="715" y="72" class="metric-label">stores/s</text>
-                        
+                        <path d="M 740 80 L 840 80" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="790" y="60" class="metric-text" id="metric-cache-stores">0</text>
+                        <text x="790" y="72" class="metric-label">stores/s</text>
+
                         <!-- N3 to N5 -->
-                        <path d="M 600 110 L 600 180" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
-                        <text x="640" y="140" class="metric-text" id="metric-pending-errors">0</text>
-                        <text x="640" y="152" class="metric-label">pending errors</text>
-                        
+                        <path d="M 650 110 L 650 190" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="695" y="145" class="metric-text" id="metric-errors-detected">0</text>
+                        <text x="695" y="157" class="metric-label">errors detected</text>
+
                         <!-- N5 to N6 -->
-                        <path d="M 600 250 L 600 320" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
-                        <text x="640" y="280" class="metric-text" id="metric-error-queued">0</text>
-                        <text x="640" y="292" class="metric-label">queued</text>
+                        <path d="M 650 260 L 650 340" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="695" y="278" class="metric-text" id="metric-events-expired">0</text>
+                        <text x="695" y="290" class="metric-label">sent to analyze</text>
+                        <text x="695" y="310" class="metric-text" id="metric-error-queued" style="font-size: 10px; fill: #da1e28;">0</text>
+                        <text x="695" y="322" class="metric-label">queued</text>
 
                         <!-- N6 to N7 -->
-                        <path d="M 680 350 L 750 350" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <path d="M 740 370 L 840 370" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="790" y="352" class="metric-text" id="metric-llm-duration">-</text>
+                        <text x="790" y="364" class="metric-label">avg LLM latency</text>
 
                         <!-- N6 to N8 (Right to Left) -->
-                        <path d="M 520 350 L 450 350" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <path d="M 560 370 L 460 370" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="510" y="352" class="metric-text" id="metric-analyses-completed">0</text>
+                        <text x="510" y="364" class="metric-label">analyzed</text>
 
                         <!-- N8 to N9 (Right to Left) -->
-                        <path d="M 280 350 L 210 350" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
-                        <text x="245" y="330" class="metric-text" id="metric-results-stored">0</text>
-                        <text x="245" y="342" class="metric-label">stored results</text>
+                        <path d="M 280 370 L 180 370" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+                        <text x="230" y="352" class="metric-text" id="metric-results-stored">0</text>
+                        <text x="230" y="364" class="metric-label">stored results</text>
 
                         <!-- Nodes -->
                         <!-- 1. OTEL Collector -->
-                        <g transform="translate(40, 50)">
+                        <g transform="translate(20, 50)">
                             <rect width="160" height="60" class="node-rect"/>
                             <text x="80" y="26" class="node-text-title">OTEL Collector</text>
                             <text x="80" y="44" class="node-text-sub">OpenTelemetry</text>
                         </g>
-                        
+
                         <!-- 2. Kafka -->
-                        <g transform="translate(280, 50)">
+                        <g transform="translate(290, 50)">
                             <rect width="160" height="60" class="node-rect"/>
                             <text x="80" y="26" class="node-text-title">OTEL Data</text>
                             <text x="80" y="44" class="node-text-sub">Kafka</text>
                         </g>
 
-                        <!-- 3. Correlator -->
-                        <g transform="translate(520, 50)">
+                        <!-- 3. Correlator (clickable) -->
+                        <g transform="translate(570, 50)" class="node-clickable" onclick="openModal('correlator')">
                             <rect width="160" height="60" class="node-rect"/>
                             <text x="80" y="26" class="node-text-title">Correlator</text>
                             <text x="80" y="44" class="node-text-sub">Camel</text>
                         </g>
 
-                        <!-- 4. Infinispan -->
-                        <g transform="translate(760, 50)">
+                        <!-- 4. Event Cache -->
+                        <g transform="translate(850, 50)">
                             <rect width="160" height="60" class="node-rect"/>
                             <text x="80" y="26" class="node-text-title">Event Cache</text>
                             <text x="80" y="44" class="node-text-sub">Infinispan</text>
-                            <text x="80" y="74" class="metric-text" id="metric-cache-entries" style="font-size: 10px;">0 entries</text>
+                            <text x="80" y="74" class="metric-text" id="metric-cache-entries" style="font-size: 10px;">-</text>
                         </g>
 
-                        <!-- 5. Artemis Error Queue -->
-                        <g transform="translate(520, 190)">
+                        <!-- 5. Error Queue -->
+                        <g transform="translate(570, 200)">
                             <rect width="160" height="60" class="node-rect"/>
                             <text x="80" y="26" class="node-text-title">Error Queue</text>
                             <text x="80" y="44" class="node-text-sub">Artemis</text>
+                            <text x="80" y="74" class="metric-text" id="metric-pending-errors" style="font-size: 10px;">-</text>
                         </g>
 
-                        <!-- 6. Analyzer -->
-                        <g id="node-analyzer" transform="translate(520, 320)">
+                        <!-- 6. Analyzer (clickable) -->
+                        <g id="node-analyzer" transform="translate(570, 340)" class="node-clickable" onclick="openModal('analyzer')">
                             <rect id="node-analyzer-rect" width="160" height="60" class="node-rect node-idle"/>
                             <text x="80" y="26" class="node-text-title">Analyzer</text>
                             <text x="80" y="44" class="node-text-sub">Camel</text>
@@ -373,21 +453,21 @@
                         </g>
 
                         <!-- 7. OpenAI -->
-                        <g transform="translate(760, 320)">
+                        <g transform="translate(850, 340)">
                             <rect width="160" height="60" class="node-rect"/>
                             <text x="80" y="26" class="node-text-title">Root Cause Analysis</text>
                             <text x="80" y="44" class="node-text-sub">OpenAI-Compatible</text>
                         </g>
 
                         <!-- 8. Analysis Result -->
-                        <g transform="translate(280, 320)">
+                        <g transform="translate(290, 340)">
                             <rect width="160" height="60" class="node-rect"/>
                             <text x="80" y="26" class="node-text-title">Analysis Result</text>
                             <text x="80" y="44" class="node-text-sub">Artemis</text>
                         </g>
 
-                        <!-- 9. UI Console -->
-                        <g transform="translate(40, 320)">
+                        <!-- 9. UI Console (clickable) -->
+                        <g transform="translate(20, 340)" class="node-clickable" onclick="openModal('ui')">
                             <rect width="160" height="60" class="node-rect"/>
                             <text x="80" y="26" class="node-text-title">UI Console</text>
                             <text x="80" y="44" class="node-text-sub">Storage & API</text>
@@ -398,23 +478,39 @@
         </div>
     </div>
 
+    <!-- Detail Modal -->
+    <div id="detail-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Service Details</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                Loading...
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/traces';
-        const INFRA_API = '/api/infra/state';
-        
+
         let allTraces = [];
         let selectedTraceId = null;
 
-        // View Switching
+        // Cached Prometheus metrics per service
+        let metricsCache = { correlator: {}, analyzer: {}, ui: {} };
+        let lastMetricsCache = { correlator: {}, analyzer: {}, ui: {} };
+        let lastPollTime = null;
+
+        // ── View Switching ──
         function switchView(viewName) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.bx--header__menu-item').forEach(el => el.classList.remove('bx--header__menu-item--current'));
-            
             document.getElementById(`view-${viewName}`).classList.add('active');
             document.getElementById(`nav-${viewName}`).classList.add('bx--header__menu-item--current');
         }
 
-        // Trace Analysis Logic
+        // ── Trace Analysis ──
         async function loadTraces() {
             try {
                 const response = await fetch(API_BASE);
@@ -439,14 +535,11 @@
         function renderTraceList(traces) {
             const traceList = document.getElementById('traceList');
             const traceCount = document.getElementById('traceCount');
-
             traceCount.innerHTML = `<span class="count-badge">${traces.length} trace${traces.length !== 1 ? 's' : ''}</span>`;
-
             if (traces.length === 0) {
                 traceList.innerHTML = '<div style="padding: 1rem; color: #525252; text-align: center;">No traces found</div>';
                 return;
             }
-
             traceList.innerHTML = traces.map(trace => `
                 <li class="trace-item ${trace.id === selectedTraceId ? 'active' : ''}"
                     onclick="loadTraceContent('${trace.id}')">
@@ -458,7 +551,6 @@
         async function loadTraceContent(traceId) {
             selectedTraceId = traceId;
             renderTraceList(filterTraces(document.getElementById('searchBox').value));
-
             const contentPanel = document.getElementById('contentPanel');
             contentPanel.innerHTML = `
                 <div class="bx--loading bx--loading--small">
@@ -467,19 +559,15 @@
                     </svg>
                 </div>
             `;
-
             try {
                 const response = await fetch(`${API_BASE}/${traceId}`);
                 if (!response.ok) throw new Error('Trace not found');
                 const data = await response.json();
-
                 contentPanel.innerHTML = `
                     <div class="bx--tile" style="padding: 0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e0e0e0;">
                             <h3 class="bx--type-productive-heading-03">Trace: ${escapeHtml(data.id)}</h3>
-                            <button class="bx--btn bx--btn--primary bx--btn--sm" onclick="loadTraceContent('${escapeHtml(traceId)}')">
-                                Refresh
-                            </button>
+                            <button class="bx--btn bx--btn--primary bx--btn--sm" onclick="loadTraceContent('${escapeHtml(traceId)}')">Refresh</button>
                         </div>
                         <div style="padding: 1.5rem;">
                             <div class="content-body">${escapeHtml(data.content)}</div>
@@ -504,9 +592,7 @@
         function filterTraces(searchTerm) {
             if (!searchTerm) return allTraces;
             const term = searchTerm.toLowerCase();
-            return allTraces.filter(trace =>
-                trace.id.toLowerCase().includes(term)
-            );
+            return allTraces.filter(t => t.id.toLowerCase().includes(term));
         }
 
         function escapeHtml(text) {
@@ -516,99 +602,187 @@
         }
 
         document.getElementById('searchBox').addEventListener('input', (e) => {
-            const filtered = filterTraces(e.target.value);
-            renderTraceList(filtered);
+            renderTraceList(filterTraces(e.target.value));
         });
 
-        // Infra Polling Logic
-        let lastInfraState = null;
-        let lastPollTime = null;
+        // ── Prometheus Helpers ──
+        function parsePrometheus(text) {
+            const metrics = {};
+            for (const line of text.split('\n')) {
+                if (line.startsWith('#') || !line.trim()) continue;
+                const match = line.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*(?:\{[^}]*\})?) +([^ ]+)/);
+                if (match) metrics[match[1]] = parseFloat(match[2]);
+            }
+            return metrics;
+        }
+
+        function getMetric(metrics, name) {
+            if (metrics[name] !== undefined) return metrics[name];
+            if (metrics[name + '_total'] !== undefined) return metrics[name + '_total'];
+            return undefined;
+        }
+
+        function sumMetric(metrics, name) {
+            let total = 0, found = false;
+            for (const [key, val] of Object.entries(metrics)) {
+                if (key === name || key === name + '_total' ||
+                    key.startsWith(name + '{') || key.startsWith(name + '_total{')) {
+                    total += val;
+                    found = true;
+                }
+            }
+            return found ? total : undefined;
+        }
+
+        // Extract metrics matching a prefix, grouped by a label value
+        function getMetricsByRoute(metrics, prefix) {
+            const routes = {};
+            for (const [key, val] of Object.entries(metrics)) {
+                if (!key.startsWith(prefix)) continue;
+                const routeMatch = key.match(/routeId="([^"]+)"/);
+                if (routeMatch) {
+                    const routeId = routeMatch[1];
+                    if (!routes[routeId]) routes[routeId] = {};
+                    // Extract the suffix after the prefix (e.g. _count, _sum, _max)
+                    const baseEnd = key.indexOf('{');
+                    const fullName = baseEnd > 0 ? key.substring(0, baseEnd) : key;
+                    const suffix = fullName.substring(prefix.length);
+                    routes[routeId][suffix || '_value'] = val;
+                }
+            }
+            return routes;
+        }
+
+        async function fetchPrometheusMetrics(url) {
+            try {
+                const r = await fetch(url);
+                if (!r.ok) return {};
+                return parsePrometheus(await r.text());
+            } catch (e) {
+                console.warn(`Metrics fetch failed: ${url}`, e);
+                return {};
+            }
+        }
 
         function updateMetric(id, value) {
             const el = document.getElementById(id);
             if (el) el.textContent = value !== undefined ? value : '-';
         }
 
-        function setAnalyzerState(state, traceId = '') {
+        function formatBytes(bytes) {
+            if (bytes === undefined || bytes === null) return '-';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+            return (bytes / 1073741824).toFixed(2) + ' GB';
+        }
+
+        function formatDuration(ms) {
+            if (ms === undefined || ms === null) return '-';
+            if (ms >= 1000) return (ms / 1000).toFixed(1) + 's';
+            return Math.round(ms) + 'ms';
+        }
+
+        // ── Analyzer State ──
+        function setAnalyzerState(state, traceId) {
             const rect = document.getElementById('node-analyzer-rect');
             const status = document.getElementById('metric-analyzer-status');
             if (!rect || !status) return;
-
             rect.classList.remove('node-active', 'node-pending', 'node-idle');
-
             if (state === 'active') {
                 rect.classList.add('node-active');
                 status.textContent = traceId ? `ACTIVE (${traceId.slice(0, 8)}…)` : 'ACTIVE';
                 status.style.fill = '#198038';
-                return;
-            }
-
-            if (state === 'pending') {
+            } else if (state === 'pending') {
                 rect.classList.add('node-pending');
                 status.textContent = 'PENDING';
                 status.style.fill = '#f1c21b';
-                return;
+            } else {
+                rect.classList.add('node-idle');
+                status.textContent = 'IDLE';
+                status.style.fill = '#8d8d8d';
             }
-
-            rect.classList.add('node-idle');
-            status.textContent = 'IDLE';
-            status.style.fill = '#8d8d8d';
         }
 
+        // ── Infra Polling (Prometheus only) ──
         async function pollInfraState() {
             try {
                 const now = Date.now();
-                const response = await fetch(INFRA_API);
-                if (!response.ok) throw new Error('Failed to fetch infra state');
-                // console.log(await response.text());
-                const data = await response.json();
-                
                 const timeDeltaSec = lastPollTime ? Math.max(1, (now - lastPollTime) / 1000) : 1;
 
-                // Infinispan metrics
-                if (data.infinispan) {
-                    const eventsStores = data.infinispan.events?.stores || 0;
-                    const eventsEntries = data.infinispan.events?.current_number_of_entries_in_memory || 0;
-                    const etpEntries = data.infinispan['events-to-process']?.current_number_of_entries_in_memory || 0;
+                // Fetch all Prometheus endpoints + infra stats in parallel
+                const [correlator, analyzer, ui, analyzerStateRes, cacheStats, queueStats] = await Promise.all([
+                    fetchPrometheusMetrics('/api/metrics/correlator'),
+                    fetchPrometheusMetrics('/api/metrics/analyzer'),
+                    fetchPrometheusMetrics('/api/metrics/ui'),
+                    fetch('/api/analyzer/state').then(r => r.ok ? r.json() : null).catch(() => null),
+                    fetch('/api/infra/cache-stats').then(r => r.ok ? r.json() : null).catch(() => null),
+                    fetch('/api/infra/queue-stats').then(r => r.ok ? r.json() : null).catch(() => null)
+                ]);
 
-                    updateMetric('metric-total-processed', eventsStores);
-                    updateMetric('metric-cache-entries', `${eventsEntries} entries`);
-                    updateMetric('metric-pending-errors', etpEntries);
-                    
-                    let storesRate = 0;
-                    if (lastInfraState?.infinispan) {
-                        const lastStores = lastInfraState.infinispan.events?.stores || 0;
-                        storesRate = Math.round(Math.max(0, eventsStores - lastStores) / timeDeltaSec);
-                    }
-                    updateMetric('metric-cache-stores', storesRate);
+                const hasCorrelator = Object.keys(correlator).length > 0;
+                const hasAnalyzer = Object.keys(analyzer).length > 0;
+                const hasUi = Object.keys(ui).length > 0;
+
+                // Total processed (correlator events stored)
+                const eventsStored = hasCorrelator ? (sumMetric(correlator, 'correlator_events_stored') || 0) : 0;
+                updateMetric('metric-total-processed', Math.round(eventsStored));
+
+                // Stores/s rate
+                const lastStored = sumMetric(lastMetricsCache.correlator, 'correlator_events_stored') || 0;
+                const storesRate = lastPollTime && hasCorrelator
+                    ? Math.round(Math.max(0, eventsStored - lastStored) / timeDeltaSec) : 0;
+                updateMetric('metric-cache-stores', storesRate);
+
+                // Errors detected (correlator)
+                const errorsDetected = hasCorrelator ? (sumMetric(correlator, 'correlator_errors_detected') || 0) : 0;
+                updateMetric('metric-errors-detected', Math.round(errorsDetected));
+
+                // Events expired / sent to analyze (correlator)
+                const eventsExpired = hasCorrelator ? (sumMetric(correlator, 'correlator_events_expired') || 0) : 0;
+                updateMetric('metric-events-expired', Math.round(eventsExpired));
+
+                // Analyses completed (analyzer)
+                const completed = hasAnalyzer ? (sumMetric(analyzer, 'analyzer_analyses_completed') || 0) : 0;
+                const notfound = hasAnalyzer ? (sumMetric(analyzer, 'analyzer_analyses_notfound') || 0) : 0;
+                updateMetric('metric-analyses-completed', Math.round(completed));
+
+                // Results stored (ui-console)
+                const resultsStored = hasUi ? (sumMetric(ui, 'ui_results_stored') || 0) : 0;
+                updateMetric('metric-results-stored', Math.round(resultsStored));
+
+                // Infinispan cache entries
+                if (cacheStats) {
+                    const entries = cacheStats.events >= 0 ? cacheStats.events : '-';
+                    updateMetric('metric-cache-entries', entries >= 0 ? `${entries} entries` : '-');
+                    const pending = cacheStats.eventsToProcess >= 0 ? cacheStats.eventsToProcess : '-';
+                    updateMetric('metric-pending-errors', pending >= 0 ? `${pending} pending` : '-');
                 }
 
-                // Artemis metrics
-                if (data.artemis) {
-                    updateMetric('metric-error-queued', data.artemis['error-logs']?.MessageCount || 0);
-                    updateMetric('metric-result-queued', data.artemis['analysis-result']?.MessageCount || 0);
+                // Artemis queue depth
+                if (queueStats) {
+                    const errorQueue = queueStats.errorLogs >= 0 ? queueStats.errorLogs : '-';
+                    updateMetric('metric-error-queued', errorQueue);
                 }
 
-                // Storage metrics
-                if (data.storage) {
-                    updateMetric('metric-results-stored', data.storage.fileCount || 0);
+                // LLM avg duration (analyzer)
+                const llmSum = hasAnalyzer ? sumMetric(analyzer, 'analyzer_llm_duration_seconds_sum') : undefined;
+                const llmCount = hasAnalyzer ? sumMetric(analyzer, 'analyzer_llm_duration_seconds_count') : undefined;
+                if (llmSum !== undefined && llmCount && llmCount > 0) {
+                    updateMetric('metric-llm-duration', formatDuration((llmSum / llmCount) * 1000));
+                } else {
+                    updateMetric('metric-llm-duration', '-');
                 }
 
-                // Analyzer activity (real): use analyzer's own state API
-                // ACTIVE: analyzer reports active=true
-                // PENDING: work waiting (pending errors / error queue), but analyzer not active
-                // IDLE: nothing waiting and analyzer not active
-                const analyzerActive = data.analyzer?.active === true;
-                const analyzerTraceId = data.analyzer?.traceId || '';
-
-                const pendingErrorsRaw = data.infinispan?.['events-to-process']?.current_number_of_entries_in_memory;
-                const pendingErrorsValid = typeof pendingErrorsRaw === 'number' && pendingErrorsRaw > 0;
-                const errorQueueDepthRaw = data.artemis?.['error-logs']?.MessageCount;
-                const errorQueueDepthValid = typeof errorQueueDepthRaw === 'number' && errorQueueDepthRaw > 0;
+                // Analyzer state from its status API + infrastructure queue depth
+                const analyzerActive = analyzerStateRes?.active === true;
+                const analyzerTraceId = analyzerStateRes?.traceId || '';
+                const pendingInCache = cacheStats?.eventsToProcess > 0;
+                const pendingInQueue = queueStats?.errorLogs > 0;
 
                 if (analyzerActive) {
                     setAnalyzerState('active', analyzerTraceId);
-                } else if (pendingErrorsValid || errorQueueDepthValid) {
+                } else if (pendingInCache || pendingInQueue) {
                     setAnalyzerState('pending');
                 } else {
                     setAnalyzerState('idle');
@@ -616,8 +790,10 @@
 
                 document.getElementById('infra-poll-status').textContent = 'Polling Active';
                 document.getElementById('infra-poll-status').className = 'bx--tag bx--tag--blue';
-                
-                lastInfraState = data;
+
+                // Cache for next poll
+                lastMetricsCache = { correlator, analyzer, ui };
+                metricsCache = { correlator, analyzer, ui };
                 lastPollTime = now;
             } catch (error) {
                 console.error('Error polling infra state:', error);
@@ -626,7 +802,177 @@
             }
         }
 
-        // Init
+        // ── Detail Modals ──
+        const serviceLabels = {
+            correlator: 'Correlator',
+            analyzer: 'Analyzer',
+            ui: 'UI Console'
+        };
+
+        function openModal(service) {
+            const modal = document.getElementById('detail-modal');
+            const title = document.getElementById('modal-title');
+            const body = document.getElementById('modal-body');
+
+            title.textContent = `${serviceLabels[service]} Metrics`;
+            body.innerHTML = renderModalContent(metricsCache[service], service);
+            modal.classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('detail-modal').classList.remove('open');
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+        function renderModalContent(m, service) {
+            if (!m || Object.keys(m).length === 0) {
+                return '<p style="color:#525252;text-align:center;padding:2rem;">Metrics unavailable. Service may not be running.</p>';
+            }
+
+            let html = '';
+
+            // JVM Memory
+            const heapUsed = getMetricWithLabel(m, 'jvm_memory_used_bytes', 'area', 'heap');
+            const heapMax = getMetricWithLabel(m, 'jvm_memory_max_bytes', 'area', 'heap');
+            const nonHeapUsed = getMetricWithLabel(m, 'jvm_memory_used_bytes', 'area', 'nonheap');
+            const heapCommitted = getMetricWithLabel(m, 'jvm_memory_committed_bytes', 'area', 'heap');
+
+            html += '<div class="modal-section">';
+            html += '<div class="modal-section-title">JVM Memory</div>';
+            if (heapUsed !== undefined) {
+                const pct = heapMax && heapMax > 0 ? Math.round((heapUsed / heapMax) * 100) : null;
+                const barClass = pct > 80 ? 'danger' : pct > 60 ? 'warn' : '';
+                html += `<div class="modal-row"><span class="modal-row-label">Heap Used</span><span class="modal-row-value">${formatBytes(heapUsed)}${heapMax > 0 ? ' / ' + formatBytes(heapMax) : ''}</span></div>`;
+                if (pct !== null) {
+                    html += `<div class="modal-bar-container"><div class="modal-bar ${barClass}" style="width:${pct}%"></div></div>`;
+                }
+            }
+            if (heapCommitted !== undefined) {
+                html += `<div class="modal-row"><span class="modal-row-label">Heap Committed</span><span class="modal-row-value">${formatBytes(heapCommitted)}</span></div>`;
+            }
+            if (nonHeapUsed !== undefined) {
+                html += `<div class="modal-row"><span class="modal-row-label">Non-Heap Used</span><span class="modal-row-value">${formatBytes(nonHeapUsed)}</span></div>`;
+            }
+            html += '</div>';
+
+            // GC
+            const gcCount = sumMetricPrefix(m, 'jvm_gc_pause_seconds_count');
+            const gcSum = sumMetricPrefix(m, 'jvm_gc_pause_seconds_sum');
+            if (gcCount !== undefined) {
+                html += '<div class="modal-section">';
+                html += '<div class="modal-section-title">Garbage Collection</div>';
+                html += `<div class="modal-row"><span class="modal-row-label">GC Pauses</span><span class="modal-row-value">${Math.round(gcCount)}</span></div>`;
+                if (gcSum !== undefined) {
+                    html += `<div class="modal-row"><span class="modal-row-label">Total GC Time</span><span class="modal-row-value">${formatDuration(gcSum * 1000)}</span></div>`;
+                    if (gcCount > 0) {
+                        html += `<div class="modal-row"><span class="modal-row-label">Avg GC Pause</span><span class="modal-row-value">${formatDuration((gcSum / gcCount) * 1000)}</span></div>`;
+                    }
+                }
+                html += '</div>';
+            }
+
+            // CPU
+            const cpuUsage = getMetric(m, 'process_cpu_usage') ?? getMetric(m, 'system_cpu_usage');
+            const cpuCount = getMetric(m, 'system_cpu_count');
+            if (cpuUsage !== undefined || cpuCount !== undefined) {
+                html += '<div class="modal-section">';
+                html += '<div class="modal-section-title">CPU</div>';
+                if (cpuUsage !== undefined) {
+                    const pct = Math.round(cpuUsage * 100);
+                    const barClass = pct > 80 ? 'danger' : pct > 50 ? 'warn' : '';
+                    html += `<div class="modal-row"><span class="modal-row-label">Process CPU</span><span class="modal-row-value">${pct}%</span></div>`;
+                    html += `<div class="modal-bar-container"><div class="modal-bar ${barClass}" style="width:${Math.min(pct, 100)}%"></div></div>`;
+                }
+                if (cpuCount !== undefined) {
+                    html += `<div class="modal-row"><span class="modal-row-label">Available Processors</span><span class="modal-row-value">${cpuCount}</span></div>`;
+                }
+                html += '</div>';
+            }
+
+            // Routes
+            const routePolicy = getMetricsByRoute(m, 'camel_route_policy_seconds');
+            const routeIds = Object.keys(routePolicy);
+            if (routeIds.length > 0) {
+                html += '<div class="modal-section">';
+                html += '<div class="modal-section-title">Camel Routes</div>';
+                for (const routeId of routeIds.sort()) {
+                    const r = routePolicy[routeId];
+                    const count = r['_count'] || 0;
+                    const sum = r['_sum'] || 0;
+                    const avg = count > 0 ? formatDuration((sum / count) * 1000) : '-';
+                    html += `<div class="modal-row"><span class="modal-row-label">${escapeHtml(routeId)}</span><span class="modal-row-value">${Math.round(count)} exchanges (avg ${avg})</span></div>`;
+                }
+                html += '</div>';
+            }
+
+            // Custom business metrics
+            const businessMetrics = getBusinessMetrics(m, service);
+            if (businessMetrics.length > 0) {
+                html += '<div class="modal-section">';
+                html += '<div class="modal-section-title">Business Metrics</div>';
+                for (const { label, value } of businessMetrics) {
+                    html += `<div class="modal-row"><span class="modal-row-label">${label}</span><span class="modal-row-value">${value}</span></div>`;
+                }
+                html += '</div>';
+            }
+
+            return html;
+        }
+
+        function getMetricWithLabel(metrics, name, labelKey, labelValue) {
+            // Sum all matching series with the given label
+            let total = 0, found = false;
+            for (const [key, val] of Object.entries(metrics)) {
+                if ((key.startsWith(name + '{') || key.startsWith(name + '_bytes{') || key === name) &&
+                    key.includes(`${labelKey}="${labelValue}"`)) {
+                    total += val;
+                    found = true;
+                }
+            }
+            return found ? total : undefined;
+        }
+
+        function sumMetricPrefix(metrics, prefix) {
+            let total = 0, found = false;
+            for (const [key, val] of Object.entries(metrics)) {
+                const base = key.split('{')[0];
+                if (base === prefix) {
+                    total += val;
+                    found = true;
+                }
+            }
+            return found ? total : undefined;
+        }
+
+        function getBusinessMetrics(m, service) {
+            const results = [];
+            if (service === 'correlator') {
+                const stored = sumMetric(m, 'correlator_events_stored');
+                if (stored !== undefined) results.push({ label: 'Events Stored', value: Math.round(stored) });
+                const errors = sumMetric(m, 'correlator_errors_detected');
+                if (errors !== undefined) results.push({ label: 'Errors Detected', value: Math.round(errors) });
+                const expired = sumMetric(m, 'correlator_events_expired');
+                if (expired !== undefined) results.push({ label: 'Events Expired', value: Math.round(expired) });
+            } else if (service === 'analyzer') {
+                const completed = sumMetric(m, 'analyzer_analyses_completed');
+                if (completed !== undefined) results.push({ label: 'Analyses Completed', value: Math.round(completed) });
+                const notfound = sumMetric(m, 'analyzer_analyses_notfound');
+                if (notfound !== undefined) results.push({ label: 'Analyses Not Found', value: Math.round(notfound) });
+                const llmSum = sumMetric(m, 'analyzer_llm_duration_seconds_sum');
+                const llmCount = sumMetric(m, 'analyzer_llm_duration_seconds_count');
+                if (llmSum !== undefined && llmCount > 0) {
+                    results.push({ label: 'Avg LLM Latency', value: formatDuration((llmSum / llmCount) * 1000) });
+                    results.push({ label: 'Total LLM Time', value: formatDuration(llmSum * 1000) });
+                }
+            } else if (service === 'ui') {
+                const stored = sumMetric(m, 'ui_results_stored');
+                if (stored !== undefined) results.push({ label: 'Results Stored', value: Math.round(stored) });
+            }
+            return results;
+        }
+
+        // ── Init ──
         document.getElementById('contentPanel').innerHTML = `
             <div class="empty-state">
                 <img src="https://raw.githubusercontent.com/apache/camel/refs/heads/main/docs/img/logo-d.svg" alt="Apache Camel" class="empty-state-icon">
@@ -639,7 +985,7 @@
         pollInfraState();
 
         setInterval(loadTraces, 15000);
-        setInterval(pollInfraState, 3000); // Poll infra every 3s
+        setInterval(pollInfraState, 3000);
     </script>
 </body>
 </html>

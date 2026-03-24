@@ -85,6 +85,15 @@
                   description: Remove saved body
                   key: currentRecord
                   operation: GetAndRemove
+              - setVariable:
+                  description: Extract record type for metric tag
+                  name: recordType
+                  jq:
+                    expression: .type // "unknown"
+                    resultType: java.lang.String
+              - toD:
+                  description: Increment events stored counter
+                  uri: "micrometer:counter:correlator.events.stored?tags=type=${variable.recordType}"
               - log:
                   description: Log stored record
                   id: log-stored
@@ -93,6 +102,9 @@
                   description: Check error severity
                   when:
                     - steps:
+                        - to:
+                            description: Increment errors detected counter
+                            uri: "micrometer:counter:correlator.errors.detected"
                         - log:
                             description: Log error record
                             message: "Adding ERROR log to events-to-process cache for traceId:
@@ -123,6 +135,9 @@
         - setBody:
             description: Get trace ID
             simple: ${header.CamelInfinispanKey}
+        - to:
+            description: Increment events expired counter
+            uri: "micrometer:counter:correlator.events.expired"
         - log:
             description: Log expiration event
             message: "Expired cache entry received, sending to JMS queue: ${body}"

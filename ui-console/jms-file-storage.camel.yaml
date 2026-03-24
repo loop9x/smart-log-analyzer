@@ -10,5 +10,8 @@
             simple: ${header.traceId}.txt
         - to:
             uri: file:{{analyzer.storage.root}}
+        - to:
+            description: Increment results stored counter
+            uri: "micrometer:counter:ui.results.stored"
         - log:
             message: "Saved content for traceId: ${header.traceId}"

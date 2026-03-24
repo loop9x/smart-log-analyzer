@@ -133,8 +133,17 @@
 
                         [1-2 sentences detailing the technical failure, including HTTP code, target URL, failing service, and the exact service error message.]
                   - to:
+                      description: Start LLM timer
+                      uri: "micrometer:timer:analyzer.llm.duration?action=start"
+                  - to:
                       description: Call OpenAI LLM
                       uri: openai:chat-completion
+                  - to:
+                      description: Stop LLM timer
+                      uri: "micrometer:timer:analyzer.llm.duration?action=stop"
+                  - to:
+                      description: Increment analyses completed counter
+                      uri: "micrometer:counter:analyzer.analyses.completed"
                   - setHeader:
                       description: Set trace ID
                       name: traceId
@@ -144,6 +153,9 @@
                       uri: jms:{{camel.jms.queue.analysis-result}}
             otherwise:
               steps:
+                - to:
+                    description: Increment analyses not-found counter
+                    uri: "micrometer:counter:analyzer.analyses.notfound"
                 - log:
                     description: Log no events
                     loggingLevel: WARN
