@@ -7,7 +7,7 @@ OTEL_ENV="export JAVA_TOOL_OPTIONS='-javaagent:$OTEL_AGENT_JAR' && export OTEL_T
 
 export OPENAI_API_KEY=your-api-key
 export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama example
-export OPENAI_MODEL=granite-4-0-h-tiny
+export OPENAI_MODEL=granite4:tiny-h
 
 # 1. Cleanup old session if it exists to start fresh
 tmux kill-session -t $SESSION 2>/dev/null
@@ -16,6 +16,12 @@ tmux kill-session -t $SESSION 2>/dev/null
 # 'env -u TMUX' helps bypass the nesting error
 env -u TMUX tmux new-session -d -s $SESSION -n "Analyzer"
 tmux set-option -t $SESSION mouse on
+
+# Inject env vars into the tmux session so all panes can see them.
+# Panes are spawned by the tmux server and don't inherit the script's exports.
+tmux set-environment -t $SESSION OPENAI_API_KEY "$OPENAI_API_KEY"
+tmux set-environment -t $SESSION OPENAI_BASE_URL "$OPENAI_BASE_URL"
+tmux set-environment -t $SESSION OPENAI_MODEL "$OPENAI_MODEL"
 
 # --- WINDOW: Analyzer ---
 # Infrastructure

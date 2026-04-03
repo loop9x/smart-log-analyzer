@@ -47,14 +47,22 @@
     from:
       uri: jms:{{camel.jms.queue.error-logs}}
       steps:
-        - log:
-            description: Log analysis start
-            loggingLevel: INFO
-            message: Received ERROR log for analysis
         - setVariable:
             description: Extract trace ID
             name: traceId
             simple: ${body}
+        - setVariable:
+            description: Set operation header
+            name: opHeader
+            constant: ""
+        - setVariable:
+            description: Set log suffix
+            name: logSuffix
+            constant: ""
+        - log:
+            description: Log analysis start
+            loggingLevel: INFO
+            message: Received ERROR log for analysis
         - log:
             description: Log retrieval start
             loggingLevel: INFO
@@ -69,7 +77,7 @@
             parameters:
               operation: GET
         - choice:
-            description: Check if found
+            description: Check if events found
             when:
               - simple: "${body} != null && ${body} != ''"
                 steps:
@@ -81,76 +89,14 @@
                         resultType: java.lang.String
                   - log:
                       description: Log record count
-                      message: Sending ${variable.recordCount} records to LLM for analysis
+                      message: "Sending ${variable.recordCount} records to LLM for analysis"
                   - setVariable:
                       description: Save events JSON
                       name: eventsJson
                       simple: ${body}
-                  - setBody:
-                      description: Create prompt body
-                      simple: >
-                        Analyze this failed request trace (traceId: ${variable.traceId}).
-                        Reconstruct the service call tree and provide a root cause analysis.
-                        IMPORTANT: include the exact service-level error messages from logs/events
-                        and JSON error bodies (for example fields like "message", "error",
-                        "service", HttpOperationFailedException text).
-
-                        Events (spans and logs sorted by timestamp):
-                        ${variable.eventsJson}
-                  - setHeader:
-                      description: Set system prompt
-                      name: CamelOpenAISystemMessage
-                      constant: |
-                        You are an expert site reliability engineer debugging distributed Camel routes using OpenTelemetry traces and logs.
-                        
-                        CRITICAL INSTRUCTIONS:
-                        1. Parse spans to build an ASCII call tree using parentSpanId/spanId relationships.
-                        2. Convert durationNano to milliseconds (ms).
-                        3. Identify the originating failure span and separate it from propagated failures.
-                        4. You MUST extract and quote the exact error messages emitted by services from:
-                           - log `message` fields
-                           - exception messages
-                           - JSON error payload fields (`error`, `service`, `message`)
-                        5. Prefer concrete evidence over speculation. If an item is not present in events, do not invent it.
-                        
-                        Output EXACTLY this format, using plain text (no markdown code blocks around the tree):
-
-                        Call Tree
-
-                        [call-tree-structure]
-
-                        Service Error Evidence
-
-                        - [service-name] "[exact log/error text]"
-                        - [service-name] "[exact log/error text]"
-                        - [service-name] "error=[...], message=[...], status=[...]"
-
-                        What Happened
-
-                        [Chronological numbered list explaining the sequence of events, what succeeded, and exactly what failed.]
-
-                        Root Cause
-
-                        [1-2 sentences detailing the technical failure, including HTTP code, target URL, failing service, and the exact service error message.]
                   - to:
-                      description: Start LLM timer
-                      uri: "micrometer:timer:analyzer.llm.duration?action=start"
-                  - to:
-                      description: Call OpenAI LLM
-                      uri: openai:chat-completion
-                  - to:
-                      description: Stop LLM timer
-                      uri: "micrometer:timer:analyzer.llm.duration?action=stop"
-                  - to:
-                      description: Increment analyses completed counter
-                      uri: "micrometer:counter:analyzer.analyses.completed"
-                  - setHeader:
-                      description: Set trace ID
-                      name: traceId
-                      simple: "${variable.traceId}"
-                  - to:
-                      description: Send analysis result
-                      uri: jms:{{camel.jms.queue.analysis-result}}
+                      description: Proceed to analysis
+                      uri: direct:run-analysis
             otherwise:
               steps:
                 - to:
@@ -160,3 +106,159 @@
                     description: Log no events
                     loggingLevel: WARN
                     message: "No events found in Infinispan for traceId: ${variable.traceId}"
+- route:
+    id: run-analysis
+    description: Run LLM analysis
+    from:
+      uri: direct:run-analysis
+      steps:
+        - setHeader:
+            description: Set per-trace prompt cache key
+            name: CamelInfinispanKey
+            simple: ${variable.traceId}-prompt-msg
+        - to:
+            description: Get per-trace prompt from cache
+            uri: infinispan:ai-messages
+            parameters:
+              operation: GET
+        - convertBodyTo:
+            description: Convert prompt to string
+            type: String
+        - choice:
+            description: Fallback to default prompt if per-trace not found
+            when:
+              - simple: "${body} == null || ${body} == ''"
+                steps:
+                  - setHeader:
+                      description: Set default prompt cache key
+                      name: CamelInfinispanKey
+                      constant: prompt-msg
+                  - to:
+                      description: Get default prompt from cache
+                      uri: infinispan:ai-messages
+                      parameters:
+                        operation: GET
+                  - convertBodyTo:
+                      description: Convert prompt to string
+                      type: String
+        - setBody:
+            description: Create prompt body
+            simple: "${body}\n\nTrace ID: ${variable.traceId}\n\nEvents (spans and logs sorted by timestamp):\n${variable.eventsJson}"
+        - setVariable:
+            description: Save prompt body
+            name: promptBody
+            simple: ${body}
+        - choice:
+            description: Set system prompt based on operation type
+            when:
+              - simple: "${variable.opHeader} == 'interactive'"
+                steps:
+                  - setHeader:
+                      description: Set empty system prompt
+                      name: CamelOpenAISystemMessage
+                      constant: ""
+            otherwise:
+              steps:
+                - setHeader:
+                    description: Set system cache key
+                    name: CamelInfinispanKey
+                    constant: system-msg
+                - to:
+                    description: Get system prompt from cache
+                    uri: infinispan:ai-messages
+                    parameters:
+                      operation: GET
+                - convertBodyTo:
+                    description: Convert system prompt to string
+                    type: String
+                - setHeader:
+                    description: Set system prompt
+                    name: CamelOpenAISystemMessage
+                    simple: ${body}
+        - setBody:
+            description: Restore prompt body
+            simple: ${variable.promptBody}
+        - to:
+            description: Start LLM timer
+            uri: "micrometer:timer:analyzer.llm.duration?action=start"
+        - to:
+            description: Call OpenAI LLM
+            uri: openai:chat-completion
+        - to:
+            description: Stop LLM timer
+            uri: "micrometer:timer:analyzer.llm.duration?action=stop"
+        - to:
+            description: Increment analyses completed counter
+            uri: "micrometer:counter:analyzer.analyses.completed"
+        - setHeader:
+            description: Set trace ID
+            name: traceId
+            simple: "${variable.traceId}"
+        - choice:
+            description: Forward op header if interactive
+            when:
+              - simple: "${variable.opHeader} == 'interactive'"
+                steps:
+                  - setHeader:
+                      description: Set op header
+                      name: op
+                      constant: interactive
+        - to:
+            description: Send analysis result
+            uri: jms:{{camel.jms.queue.analysis-result}}
+- route:
+    id: interactive-log-analyzer
+    description: Analyze interactive requests
+    from:
+      uri: jms:{{camel.jms.queue.error-logs-interactive}}
+      steps:
+        - log:
+            description: Log interactive analysis start
+            loggingLevel: INFO
+            message: "Received interactive analysis request"
+        - setVariable:
+            description: Extract trace ID
+            name: traceId
+            simple: ${body}
+        - setVariable:
+            description: Set operation header
+            name: opHeader
+            constant: interactive
+        - setVariable:
+            description: Set log suffix
+            name: logSuffix
+            constant: " [interactive]"
+        - log:
+            description: Log retrieval start
+            loggingLevel: INFO
+            message: "Retrieving all events for traceId: ${variable.traceId} [interactive]"
+        - setHeader:
+            description: Set cache key
+            name: CamelInfinispanKey
+            simple: otel-${variable.traceId}
+        - to:
+            description: Get trace events
+            uri: infinispan:events
+            parameters:
+              operation: GET
+        - choice:
+            description: Check if events found
+            when:
+              - simple: "${body} != null && ${body} != ''"
+                steps:
+                  - setVariable:
+                      description: Save events JSON
+                      name: eventsJson
+                      simple: ${body}
+            otherwise:
+              steps:
+                - log:
+                    description: Log no events
+                    message: "No events in Infinispan for traceId ${variable.traceId}, proceeding with prompt only [interactive]"
+                - setVariable:
+                    description: Set empty events
+                    name: eventsJson
+                    constant: "[]"
+        - to:
+            description: Proceed to analysis
+            uri: direct:run-analysis

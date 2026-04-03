@@ -7,10 +7,21 @@
         - log:
             description: Log JMS message
             message: "Received message from JMS queue: ${body}"
-        - setHeader:
-            description: Set file name
-            name: CamelFileName
-            simple: ${header.traceId}.txt
+        - choice:
+            description: Set filename based on operation type
+            when:
+              - simple: "${header.op} == 'interactive'"
+                steps:
+                  - setHeader:
+                      description: Set interactive file name
+                      name: CamelFileName
+                      simple: ${header.traceId}-it.txt
+            otherwise:
+              steps:
+                - setHeader:
+                    description: Set standard file name
+                    name: CamelFileName
+                    simple: ${header.traceId}.txt
         - to:
             description: Write to file
             uri: file:{{analyzer.storage.root}}
