@@ -303,6 +303,77 @@
         }
         .modal-bar.warn { background: #f1c21b; }
         .modal-bar.danger { background: #da1e28; }
+
+        /* Interactive Analysis styles */
+        .interactive-container {
+            padding: 1.5rem;
+        }
+
+        .interactive-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .interactive-section label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.32px;
+            color: #525252;
+            margin-bottom: 0.5rem;
+        }
+
+        .interactive-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 0.75rem;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            border: 1px solid #e0e0e0;
+            background-color: #ffffff;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .interactive-textarea:focus {
+            outline: 2px solid #0f62fe;
+            border-color: #0f62fe;
+        }
+
+        .interactive-result {
+            background-color: #ffffff;
+            padding: 1rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bx--body">
@@ -386,10 +457,12 @@
 
                         <!-- N5 to N6 -->
                         <path d="M 650 260 L 650 340" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
-                        <text x="695" y="278" class="metric-text" id="metric-events-expired">0</text>
-                        <text x="695" y="290" class="metric-label">sent to analyze</text>
-                        <text x="695" y="310" class="metric-text" id="metric-error-queued" style="font-size: 10px; fill: #da1e28;">0</text>
-                        <text x="695" y="322" class="metric-label">queued</text>
+                        <text x="695" y="270" class="metric-text" id="metric-events-expired">0</text>
+                        <text x="695" y="282" class="metric-label">sent to analyze</text>
+                        <text x="695" y="296" class="metric-text" id="metric-interactive-triggered">0</text>
+                        <text x="695" y="308" class="metric-label">interactive</text>
+                        <text x="695" y="322" class="metric-text" id="metric-error-queued" style="font-size: 10px; fill: #da1e28;">0</text>
+                        <text x="695" y="334" class="metric-label">queued</text>
 
                         <!-- N6 to N7 -->
                         <path d="M 740 370 L 840 370" stroke="#8d8d8d" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
@@ -496,6 +569,7 @@
 
         let allTraces = [];
         let selectedTraceId = null;
+        let currentTraceContent = '';
 
         // Cached Prometheus metrics per service
         let metricsCache = { correlator: {}, analyzer: {}, ui: {} };
@@ -563,11 +637,15 @@
                 const response = await fetch(`${API_BASE}/${traceId}`);
                 if (!response.ok) throw new Error('Trace not found');
                 const data = await response.json();
+                currentTraceContent = data.content;
                 contentPanel.innerHTML = `
                     <div class="bx--tile" style="padding: 0;">
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e0e0e0;">
                             <h3 class="bx--type-productive-heading-03">Trace: ${escapeHtml(data.id)}</h3>
-                            <button class="bx--btn bx--btn--primary bx--btn--sm" onclick="loadTraceContent('${escapeHtml(traceId)}')">Refresh</button>
+                            <div class="btn-group">
+                                <button class="bx--btn bx--btn--primary bx--btn--sm" onclick="loadTraceContent('${escapeHtml(traceId)}')">Refresh</button>
+                                <button class="bx--btn bx--btn--tertiary bx--btn--sm" onclick="openInteractiveAnalysis('${escapeHtml(traceId)}')">Interactive Analysis</button>
+                            </div>
                         </div>
                         <div style="padding: 1.5rem;">
                             <div class="content-body">${escapeHtml(data.content)}</div>
@@ -741,6 +819,10 @@
                 // Events expired / sent to analyze (correlator)
                 const eventsExpired = hasCorrelator ? (sumMetric(correlator, 'correlator_events_expired') || 0) : 0;
                 updateMetric('metric-events-expired', Math.round(eventsExpired));
+
+                // Interactive analyses triggered (ui-console)
+                const interactiveTriggered = hasUi ? (sumMetric(ui, 'ui_interactive_triggered') || 0) : 0;
+                updateMetric('metric-interactive-triggered', Math.round(interactiveTriggered));
 
                 // Analyses completed (analyzer)
                 const completed = hasAnalyzer ? (sumMetric(analyzer, 'analyzer_analyses_completed') || 0) : 0;
@@ -970,6 +1052,134 @@
                 if (stored !== undefined) results.push({ label: 'Results Stored', value: Math.round(stored) });
             }
             return results;
+        }
+
+        // ── Interactive Analysis ──
+        async function openInteractiveAnalysis(traceId) {
+            const contentPanel = document.getElementById('contentPanel');
+
+            contentPanel.innerHTML = `
+                <div class="bx--tile" style="padding: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e0e0e0;">
+                        <h3 class="bx--type-productive-heading-03">Interactive Analysis: ${escapeHtml(traceId)}</h3>
+                        <button class="bx--btn bx--btn--ghost bx--btn--sm" onclick="loadTraceContent('${escapeHtml(traceId)}')">Back</button>
+                    </div>
+                    <div class="interactive-container">
+                        <div class="bx--loading bx--loading--small">
+                            <svg class="bx--loading__svg" viewBox="0 0 100 100">
+                                <circle class="bx--loading__stroke" cx="50%" cy="50%" r="44"></circle>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            let currentPrompt = '';
+            let existingInteractive = null;
+            try {
+                const [promptRes, itRes] = await Promise.all([
+                    fetch(`${API_BASE}/${traceId}/prompt`),
+                    fetch(`${API_BASE}/${traceId}/interactive`)
+                ]);
+                if (promptRes.ok) {
+                    currentPrompt = await promptRes.text();
+                    // Strip the prefixed analysis result if it was saved with the prompt
+                    if (currentTraceContent && currentPrompt.startsWith(currentTraceContent)) {
+                        currentPrompt = currentPrompt.substring(currentTraceContent.length).replace(/^\n+/, '');
+                    }
+                }
+                if (itRes.ok) {
+                    const itData = await itRes.json();
+                    existingInteractive = itData.content;
+                }
+            } catch (e) {
+                console.error('Failed to fetch prompt/interactive:', e);
+            }
+
+            const hasInteractive = existingInteractive !== null;
+
+            contentPanel.innerHTML = `
+                <div class="bx--tile" style="padding: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid #e0e0e0;">
+                        <h3 class="bx--type-productive-heading-03">Interactive Analysis: ${escapeHtml(traceId)}</h3>
+                        <button class="bx--btn bx--btn--ghost bx--btn--sm" onclick="loadTraceContent('${escapeHtml(traceId)}')">Back</button>
+                    </div>
+                    <div class="interactive-container">
+                        <div class="interactive-section">
+                            <label>Current Analysis Result</label>
+                            <div class="interactive-result">${escapeHtml(currentTraceContent)}</div>
+                        </div>
+                        <div class="interactive-section">
+                            <label>Prompt</label>
+                            <textarea id="interactive-prompt" class="interactive-textarea">${escapeHtml(currentPrompt)}</textarea>
+                        </div>
+                        <div class="interactive-section">
+                            <button id="analyze-btn" class="bx--btn bx--btn--primary bx--btn--sm" onclick="runInteractiveAnalysis('${escapeHtml(traceId)}')">Analyze</button>
+                        </div>
+                        <div id="interactive-result-section" class="interactive-section" style="${hasInteractive ? '' : 'display:none;'}">
+                            <label>Interactive Analysis Result</label>
+                            <div id="interactive-result-content" class="interactive-result">${hasInteractive ? escapeHtml(existingInteractive) : ''}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function runInteractiveAnalysis(traceId) {
+            const btn = document.getElementById('analyze-btn');
+            const resultSection = document.getElementById('interactive-result-section');
+            const resultContent = document.getElementById('interactive-result-content');
+            const promptText = document.getElementById('interactive-prompt').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span>Analyzing...';
+            resultSection.style.display = 'block';
+            resultContent.textContent = 'Waiting for analysis result...';
+
+            try {
+                const fullPrompt = currentTraceContent + '\n\n' + promptText;
+                await fetch(`${API_BASE}/${traceId}/prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: fullPrompt
+                });
+
+                await fetch(`${API_BASE}/${traceId}/interactive`, {
+                    method: 'POST'
+                });
+
+                let attempts = 0;
+                const maxAttempts = 200;
+                const pollInterval = 3000;
+
+                const poll = setInterval(async () => {
+                    attempts++;
+                    try {
+                        const res = await fetch(`${API_BASE}/${traceId}/interactive`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            clearInterval(poll);
+                            resultContent.textContent = data.content;
+                            btn.disabled = false;
+                            btn.innerHTML = 'Analyze';
+                        }
+                    } catch (e) {
+                        // continue polling
+                    }
+                    if (attempts >= maxAttempts) {
+                        clearInterval(poll);
+                        resultContent.textContent = 'Analysis timed out. Please try again.';
+                        btn.disabled = false;
+                        btn.innerHTML = 'Analyze';
+                    }
+                }, pollInterval);
+
+            } catch (error) {
+                console.error('Interactive analysis failed:', error);
+                resultContent.textContent = 'Error: ' + error.message;
+                btn.disabled = false;
+                btn.innerHTML = 'Analyze';
+            }
         }
 
         // ── Init ──

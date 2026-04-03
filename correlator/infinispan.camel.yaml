@@ -144,3 +144,75 @@
         - to:
             description: Send to JMS
             uri: jms:{{camel.jms.queue.error-logs}}
+# Saves a per-trace custom prompt to the ai-messages Infinispan cache
+- route:
+    id: route-ai-prompts
+    description: Save per-trace prompt to Infinispan
+    from:
+      uri: jms:{{camel.jms.queue.ai-prompts}}
+      steps:
+        - convertBodyTo:
+            description: Convert JMS body to string
+            type: String
+            charset: UTF-8
+        - log:
+            description: Log incoming prompt
+            message: "Received prompt for traceId: ${header.traceId}"
+        - setHeader:
+            description: Set cache key
+            name: CamelInfinispanKey
+            simple: ${header.traceId}-prompt-msg
+        - setHeader:
+            description: Set cache value
+            name: CamelInfinispanValue
+            simple: ${body}
+        - to:
+            description: Save prompt to cache
+            uri: infinispan:ai-messages
+            parameters:
+              operation: PUT
+        - log:
+            description: Log saved prompt
+            message: "Saved prompt for traceId: ${header.traceId}"
+# Reads per-trace prompt from ai-messages cache, falls back to default prompt-msg
+- route:
+    id: route-ai-prompts-read
+    description: Read per-trace or default prompt from Infinispan
+    from:
+      uri: jms:{{camel.jms.queue.ai-prompts-read}}
+      steps:
+        - log:
+            description: Log prompt read request
+            message: "Reading prompt for traceId: ${header.traceId}"
+        - setHeader:
+            description: Set per-trace prompt cache key
+            name: CamelInfinispanKey
+            simple: ${header.traceId}-prompt-msg
+        - to:
+            description: Get per-trace prompt from cache
+            uri: infinispan:ai-messages
+            parameters:
+              operation: GET
+        - convertBodyTo:
+            description: Convert to string
+            type: String
+        - choice:
+            description: Fallback to default prompt
+            when:
+              - simple: "${body} == null || ${body} == ''"
+                steps:
+                  - setHeader:
+                      description: Set default prompt cache key
+                      name: CamelInfinispanKey
+                      constant: prompt-msg
+                  - to:
+                      description: Get default prompt from cache
+                      uri: infinispan:ai-messages
+                      parameters:
+                        operation: GET
+                  - convertBodyTo:
+                      description: Convert to string
+                      type: String
+        - log:
+            description: Log prompt read result
+            message: "Returning prompt for traceId: ${header.traceId}"

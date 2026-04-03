@@ -13,9 +13,10 @@ sequenceDiagram
     participant Correlator as Correlator
     participant Events as Infinispan (events)
     participant ToProcess as Infinispan (events-to-process)
+    participant AiMessages as Infinispan (ai-messages)
     participant JMS as JMS Queue
     participant Analyzer as Analyzer
-    participant LLM as Ollama LLM
+    participant LLM as LLM
     participant UIConsole as UI Console
 
     App->>OTel: Send traces & logs (OTLP)
@@ -33,11 +34,28 @@ sequenceDiagram
         Correlator->>JMS: Send traceId to queue
         JMS->>Analyzer: Consume traceId
         Analyzer->>Events: Fetch all events for traceId
+        Analyzer->>AiMessages: Get prompt (per-trace or default prompt-msg)
+        Analyzer->>AiMessages: Get system prompt (system-msg)
         Analyzer->>LLM: Send events for analysis
         LLM-->>Analyzer: Root cause analysis result
         Analyzer->>JMS: Send analysis result
         JMS->>UIConsole: Consume analysis result
-        UIConsole->>UIConsole: Save and display result
+        UIConsole->>UIConsole: Save as {traceId}.txt
+    end
+
+    alt Interactive Analysis (user-triggered)
+        UIConsole->>JMS: Save custom prompt (ai-prompts queue)
+        JMS->>Correlator: Consume prompt
+        Correlator->>AiMessages: Store as {traceId}-prompt-msg
+        UIConsole->>JMS: Send traceId (error-logs-interactive queue)
+        JMS->>Analyzer: Consume traceId
+        Analyzer->>Events: Fetch events (optional)
+        Analyzer->>AiMessages: Get {traceId}-prompt-msg
+        Analyzer->>LLM: Send with empty system prompt
+        LLM-->>Analyzer: Analysis result
+        Analyzer->>JMS: Send result (op=interactive)
+        JMS->>UIConsole: Consume result
+        UIConsole->>UIConsole: Save as {traceId}-it.txt
     end
 ----
 
@@ -95,6 +113,9 @@ The correlator is the central event processing component:
 ** Listens for cache expiration events to trigger analysis
 ** This delay ensures all related spans and logs are collected before analysis
 * Sends expired traceIds to JMS queue for the Analyzer
+* Manages per-trace prompts via JMS queues:
+** `ai-prompts` queue: saves custom prompts to Infinispan `ai-messages` cache (key: `{traceId}-prompt-msg`)
+** `ai-prompts-read` queue: request/reply API to read per-trace prompt with fallback to default `prompt-msg`
 
 === Analyzer
 
@@ -102,22 +123,38 @@ The analyzer performs intelligent root cause analysis:
 
 * Listens on JMS `error-logs` queue for traceIds from the Correlator
 * Retrieves full trace context from Infinispan `events` cache
-* Sends events to Ollama LLM (granite4:3b) for intelligent analysis
-* Outputs analysis results to logs
+* Loads prompt from Infinispan `ai-messages` cache (per-trace `{traceId}-prompt-msg` with fallback to default `prompt-msg`)
+* Loads system prompt from Infinispan `ai-messages` cache (key: `system-msg`)
+* Sends events to an OpenAI-compatible LLM for intelligent analysis
+* Outputs analysis results to JMS `analysis-result` queue
+* Exposes a status API (`GET /api/analyzer/state`) reporting whether an analysis is in progress
 
-=== Log Generator
+==== Interactive Analysis
 
-A synthetic log generator for demonstration purposes that shows how to add OpenTelemetry observability to Apache Camel applications. It simulates order processing with intentional errors (30% failure rate).
+* Listens on a separate JMS `error-logs-interactive` queue (independent thread from normal analysis)
+* Allows users to customize the prompt per-trace and re-run analysis from the UI
+* Uses an empty system prompt and the user-provided prompt (which includes the previous analysis result)
+* Proceeds even if no OTEL events are found in Infinispan (uses prompt-only analysis)
 
-*Adding OpenTelemetry to your Camel application requires:*
+=== Trip Booking (Demo Application)
 
-. *opentelemetry-javaagent.jar* - The OTEL Java agent for automatic instrumentation. Download from https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases[OpenTelemetry releases].
+A microservices-based trip booking application for generating realistic OpenTelemetry traces. It simulates order processing with intentional errors for demonstrating the analyzer.
+
+* **Trip Booking Orchestrator** (`trip-booking/`) - REST API on port 8090 with sync (HTTP fan-out) and async (Kafka) booking flows. 4% validation failure rate.
+* **Car Booking** (`trip-booking/car-booking/`) - REST API on port 8091 with simulated provider errors (~5%) and pricing issues (~10%).
+* **Flight Booking** (`trip-booking/flight-booking/`) - REST API on port 8092 with simulated failures.
+* **Hotel Booking** (`trip-booking/hotel-booking/`) - REST API on port 8093 with simulated failures.
+* **Log Generator** (`trip-booking/log-generator/`) - A synthetic log generator for standalone testing.
+
+All services use the OpenTelemetry Java agent for automatic instrumentation. The OTEL agent requires:
+
+. *opentelemetry-javaagent.jar* - The OTEL Java agent. Download from https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases[OpenTelemetry releases].
 
 . *agent.properties* - Configures the OTEL agent:
 +
 [source,properties]
 ----
-otel.service.name=log-generator
+otel.service.name=trip-booking
 otel.traces.exporter=otlp
 otel.logs.exporter=otlp
 otel.metrics.exporter=none
@@ -131,31 +168,61 @@ camel.opentelemetry2.enabled = true
 camel.jbang.dependencies=org.apache.camel:camel-opentelemetry2
 ----
 
-Run with the javaagent flag pointing to the agent jar and its configuration file. With this setup, Camel will automatically expose custom traces for route executions and exchanges.
-
 === UI Console
 
-The UI Console provides visualization and storage for analysis results:
+The UI Console provides visualization, storage, and interactive analysis:
 
 * Listens on JMS queue for analysis results from the Analyzer
-* Stores analysis results to files for persistence
-* Exposes REST API to display and access the results
-* Provides a user interface to view root cause analysis
+* Stores analysis results to files for persistence (normal: `{traceId}.txt`, interactive: `{traceId}-it.txt`)
+* Exposes REST API for traces, prompts, and interactive analysis
+* Provides an Infrastructure View with real-time metrics, architecture diagram, cache/queue stats, and JVM details
+* Proxies Prometheus metrics from all components and Infinispan/Artemis stats
+* Interactive Analysis page: allows users to customize the LLM prompt per-trace, re-run analysis, and view results side-by-side with the original analysis
+
+==== REST API
+
+[cols="1,1,2"]
+|===
+| Method | Path | Description
+
+| GET | `/api/traces` | List all analyzed traces
+| GET | `/api/traces/{id}` | Get analysis result for a trace
+| GET | `/api/traces/{id}/prompt` | Get prompt for a trace (per-trace or default)
+| POST | `/api/traces/{id}/prompt` | Save custom prompt for a trace
+| POST | `/api/traces/{id}/interactive` | Trigger interactive analysis
+| GET | `/api/traces/{id}/interactive` | Get interactive analysis result
+| GET | `/api/metrics/correlator` | Proxy correlator Prometheus metrics
+| GET | `/api/metrics/analyzer` | Proxy analyzer Prometheus metrics
+| GET | `/api/metrics/ui` | Proxy UI Console Prometheus metrics
+| GET | `/api/analyzer/state` | Proxy analyzer processing state
+| GET | `/api/infra/cache-stats` | Infinispan cache entry counts
+| GET | `/api/infra/queue-stats` | Artemis queue message counts
+|===
 
 == Prerequisites
 
 * Docker & Docker Compose
 * https://www.jbang.dev/download/[JBang]
-* https://ollama.ai/[Ollama] with `granite4:3b` model:
-+
-[source,bash]
-----
-ollama pull granite4:3b
-----
+* An OpenAI-compatible LLM endpoint (e.g., https://ollama.ai/[Ollama] with `granite4:latest`)
 
 == Running the Application
 
-=== 1. Start Infrastructure
+=== Quick Start (tmux)
+
+The `start.sh` script launches all components in a tmux session with two windows: one for the analyzer infrastructure (docker-compose, correlator, analyzer, UI console) and one for the trip-booking microservices.
+
+[source,bash]
+----
+# Set your LLM endpoint (edit start.sh or export before running)
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=granite4:latest
+
+./start.sh
+----
+
+=== Manual Start
+
+==== 1. Start Infrastructure
 
 [source,bash]
 ----
@@ -163,7 +230,9 @@ cd containers
 docker-compose up
 ----
 
-=== 2. Start Correlator
+This starts Kafka, Infinispan, OTEL Collector, ActiveMQ Artemis, and initializes Infinispan caches (`events`, `events-to-process`, `ai-messages`) with default prompts.
+
+==== 2. Start Correlator
 
 [source,bash]
 ----
@@ -176,30 +245,48 @@ camel run \
   kaoto-datamapper-8f5bb2dd.xsl
 ----
 
-=== 3. Start Analyzer
+==== 3. Start Analyzer
 
 [source,bash]
 ----
 cd analyzer
-camel run error-analyzer.camel.yaml
+camel run error-analyzer.camel.yaml status-api.camel.yaml
 ----
 
-=== 4. Start Log Generator
+==== 4. Start Trip Booking Services
 
 [source,bash]
 ----
-cd log-generator
-jbang --javaagent=./opentelemetry-javaagent.jar \
-  -Dotel.javaagent.configuration-file=./agent.properties \
-  camel@apache/camel run log-generator.camel.yaml
+# Set OTEL agent environment
+export JAVA_TOOL_OPTIONS="-javaagent=$PWD/trip-booking/log-generator/opentelemetry-javaagent.jar"
+export OTEL_TRACES_EXPORTER=otlp
+export OTEL_LOGS_EXPORTER=otlp
+export OTEL_METRICS_EXPORTER=none
+
+# Start each service in a separate terminal:
+cd trip-booking/car-booking && OTEL_SERVICE_NAME=car-booking camel run car-booking.camel.yaml application-dev.properties
+cd trip-booking/flight-booking && OTEL_SERVICE_NAME=flight-booking camel run flight-booking.camel.yaml application-dev.properties
+cd trip-booking/hotel-booking && OTEL_SERVICE_NAME=hotel-booking camel run hotel-booking.camel.yaml application-dev.properties
+cd trip-booking && OTEL_SERVICE_NAME=trip-booking camel run trip-booking.camel.yaml application-dev.properties
 ----
 
-=== 5. Start UI Console
+==== 5. Start UI Console
 
 [source,bash]
 ----
 cd ui-console
 camel run *
+----
+
+==== 6. Generate Traffic
+
+[source,bash]
+----
+# Sync booking (HTTP fan-out to car/flight/hotel)
+curl http://localhost:8090/camel/bookTrip
+
+# Async booking (via Kafka)
+curl http://localhost:8090/camel/asyncBookTrip
 ----
 
 == Infrastructure Services
@@ -209,9 +296,33 @@ camel run *
 | Service | Port | Purpose
 
 | Kafka | 9092 | Message broker for OTEL data
-| Infinispan | 11222 | Event cache (admin:password)
+| Infinispan | 11222 | Event cache and prompt storage (admin:password)
 | OTEL Collector | 4317, 4318 | Telemetry receiver (gRPC, HTTP)
 | ActiveMQ Artemis | 61616, 8161 | JMS broker (artemis:artemis)
+|===
+
+=== Infinispan Caches
+
+[cols="1,1,2"]
+|===
+| Cache | TTL | Purpose
+
+| `events` | 5 minutes | OTEL events grouped by traceId
+| `events-to-process` | 20 seconds | Deferred error analysis triggers
+| `ai-messages` | None (permanent) | Default and per-trace LLM prompts (`prompt-msg`, `system-msg`, `{traceId}-prompt-msg`)
+|===
+
+=== JMS Queues
+
+[cols="1,2"]
+|===
+| Queue | Purpose
+
+| `error-logs` | TraceIds for automatic error analysis
+| `error-logs-interactive` | TraceIds for user-triggered interactive analysis
+| `analysis-result` | LLM analysis results (consumed by UI Console)
+| `ai-prompts` | Save per-trace custom prompts (consumed by Correlator)
+| `ai-prompts-read` | Request/reply to read per-trace or default prompt
 |===
 
 == Metrics (Micrometer + Prometheus)
@@ -224,18 +335,21 @@ Each Camel component exposes Micrometer metrics via a Prometheus scrape endpoint
 
 | Correlator | http://localhost:9090/observe/metrics | `correlator.events.stored` (tagged by `type`), `correlator.errors.detected`, `correlator.events.expired`
 | Analyzer | http://localhost:9091/observe/metrics | `analyzer.analyses.completed`, `analyzer.analyses.notfound`, `analyzer.llm.duration` (timer)
-| UI Console | http://localhost:9092/observe/metrics | `ui.results.stored`
+| UI Console | http://localhost:9082/observe/metrics | `ui.results.stored`
 |===
 
 In addition to custom metrics, Camel auto-registers route-level metrics via `MicrometerRoutePolicyFactory`:
 
-* `camel_exchanges_total` — total exchanges per route (use `routeId=log-consumer` / `routeId=trace-consumer` for per-type throughput)
+* `camel_exchanges_total` -- total exchanges per route (use `routeId=log-consumer` / `routeId=trace-consumer` for per-type throughput)
 * `camel_exchanges_succeeded_total` / `camel_exchanges_failed_total`
-* `camel_route_policy_seconds` — exchange duration histogram per route
+* `camel_route_policy_seconds` -- exchange duration histogram per route
 
 JVM metrics (`jvm-memory`, `jvm-gc`, `processor`) are also exposed on each endpoint via Micrometer binders.
 
 The UI Console also proxies metrics for convenience:
 
-* `GET /api/metrics/correlator` — proxies correlator Prometheus metrics
-* `GET /api/metrics/analyzer` — proxies analyzer Prometheus metrics
+* `GET /api/metrics/correlator` -- proxies correlator Prometheus metrics
+* `GET /api/metrics/analyzer` -- proxies analyzer Prometheus metrics
+* `GET /api/metrics/ui` -- proxies UI Console Prometheus metrics
+* `GET /api/infra/cache-stats` -- Infinispan cache entry counts (events, events-to-process)
+* `GET /api/infra/queue-stats` -- Artemis queue message counts (error-logs, analysis-result)

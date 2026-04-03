@@ -60,6 +60,9 @@ services:
         echo 'Creating caches...' &&
         curl -f -u admin:password --digest -X POST 'http://infinispan:11222/rest/v2/caches/events' -H 'Content-Type: application/json' -d @/etc/caches/infinispan-events-config.json &&
         curl -f -u admin:password --digest -X POST 'http://infinispan:11222/rest/v2/caches/events-to-process' -H 'Content-Type: application/json' -d @/etc/caches/infinispan-events-to-process-config.json &&
+        curl -f -u admin:password --digest -X POST 'http://infinispan:11222/rest/v2/caches/ai-messages' -H 'Content-Type: application/json' -d @/etc/caches/infinispan-ai-messages-config.json &&
+        curl -f -u admin:password --digest -X POST 'http://infinispan:11222/rest/v2/caches/ai-messages/prompt-msg' -H 'Content-Type: text/plain' -d @/etc/caches/analyzer-prompt.txt &&
+        curl -f -u admin:password --digest -X POST 'http://infinispan:11222/rest/v2/caches/ai-messages/system-msg' -H 'Content-Type: text/plain' -d @/etc/caches/analyzer-system-prompt.txt &&
         echo 'Caches created successfully'
       "
     deploy:
